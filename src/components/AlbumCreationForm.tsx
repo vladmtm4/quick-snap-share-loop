@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
-import { dbService } from "@/lib/db-service";
+import { supabaseService } from "@/lib/supabase-service";
 
 const AlbumCreationForm: React.FC = () => {
   const [title, setTitle] = useState("");
@@ -19,7 +19,7 @@ const AlbumCreationForm: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!title.trim()) {
@@ -34,12 +34,14 @@ const AlbumCreationForm: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      const newAlbum = dbService.createAlbum({
+      const newAlbum = await supabaseService.createAlbum({
         title,
         description: description.trim() ? description : undefined,
         isPrivate,
         moderationEnabled
       });
+      
+      console.log("Album created successfully:", newAlbum);
       
       toast({
         title: "Success",
@@ -48,6 +50,7 @@ const AlbumCreationForm: React.FC = () => {
       
       navigate(`/album/${newAlbum.id}`);
     } catch (error) {
+      console.error("Error creating album:", error);
       toast({
         title: "Error",
         description: "Failed to create album",

@@ -31,17 +31,32 @@ export const supabaseService = {
     }));
   },
   
-  async getAlbumById(id: string): Promise<Album | null> {
+  async createAlbum(albumData: {
+    title: string;
+    description?: string;
+    isPrivate?: boolean;
+    moderationEnabled?: boolean;
+  }): Promise<Album> {
+    console.log("Creating album with data:", albumData);
+    
     const { data, error } = await supabase
       .from('albums')
-      .select('*')
-      .eq('id', id)
+      .insert({
+        title: albumData.title,
+        description: albumData.description || null,
+        is_private: albumData.isPrivate || false,
+        moderation_enabled: albumData.moderationEnabled || false,
+        created_at: new Date().toISOString()
+      })
+      .select()
       .single();
     
     if (error || !data) {
-      console.error('Error fetching album:', error);
-      return null;
+      console.error('Error creating album:', error);
+      throw new Error(error?.message || 'Failed to create album');
     }
+    
+    console.log("Album created in database:", data);
     
     return {
       id: data.id,
@@ -52,6 +67,39 @@ export const supabaseService = {
       isPrivate: data.is_private || false,
       ownerId: data.owner_id || undefined
     };
+  },
+  
+  async getAlbumById(id: string): Promise<Album | null> {
+    console.log("Fetching album with ID:", id);
+    
+    const { data, error } = await supabase
+      .from('albums')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching album:', error);
+      return null;
+    }
+    
+    if (!data) {
+      console.error('Album not found with ID:', id);
+      return null;
+    }
+    
+    const album: Album = {
+      id: data.id,
+      title: data.title,
+      description: data.description || undefined,
+      createdAt: data.created_at || '',
+      moderationEnabled: data.moderation_enabled || false,
+      isPrivate: data.is_private || false,
+      ownerId: data.owner_id || undefined
+    };
+    
+    console.log("Album fetched successfully:", album);
+    return album;
   },
   
   // Photo methods

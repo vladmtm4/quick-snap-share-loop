@@ -1,13 +1,32 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import AlbumCreationForm from "@/components/AlbumCreationForm";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { dbService } from "@/lib/db-service";
+import { supabaseService } from "@/lib/supabase-service";
+import { Album } from "@/types";
 
 const HomePage: React.FC = () => {
-  const albums = dbService.getAllAlbums();
+  const [albums, setAlbums] = useState<Album[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    async function loadAlbums() {
+      setLoading(true);
+      try {
+        const allAlbums = await supabaseService.getAllAlbums();
+        console.log("All albums loaded:", allAlbums);
+        setAlbums(allAlbums);
+      } catch (error) {
+        console.error("Error loading albums:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    loadAlbums();
+  }, []);
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -21,7 +40,11 @@ const HomePage: React.FC = () => {
           </p>
         </div>
 
-        {albums.length > 0 && (
+        {loading ? (
+          <div className="text-center py-4">
+            <p>Loading albums...</p>
+          </div>
+        ) : albums.length > 0 ? (
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4">Your Albums</h2>
             <div className="grid gap-4 md:grid-cols-2">
@@ -57,6 +80,10 @@ const HomePage: React.FC = () => {
                 </Link>
               ))}
             </div>
+          </div>
+        ) : (
+          <div className="mb-8 text-center">
+            <p className="text-gray-500 mb-4">No albums yet. Create your first album below!</p>
           </div>
         )}
         
