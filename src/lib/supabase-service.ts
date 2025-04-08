@@ -11,15 +11,18 @@ type PhotosRow = Database['public']['Tables']['photos']['Row'];
 export const supabaseService = {
   // Album methods
   async getAllAlbums(): Promise<Album[]> {
+    console.log("Fetching all albums");
     const { data, error } = await supabase
       .from('albums')
-      .select('*');
+      .select('*')
+      .order('created_at', { ascending: false });
     
     if (error) {
       console.error('Error fetching albums:', error);
       return [];
     }
     
+    console.log("Albums fetched successfully:", data?.length || 0, "albums found");
     return (data || []).map(album => ({
       id: album.id,
       title: album.title,
@@ -39,24 +42,34 @@ export const supabaseService = {
   }): Promise<Album> {
     console.log("Creating album with data:", albumData);
     
+    // Create a new object with the data to insert
+    const newAlbum = {
+      title: albumData.title,
+      description: albumData.description || null,
+      is_private: albumData.isPrivate || false,
+      moderation_enabled: albumData.moderationEnabled || false,
+      created_at: new Date().toISOString()
+    };
+    
+    console.log("Inserting album:", newAlbum);
+    
     const { data, error } = await supabase
       .from('albums')
-      .insert({
-        title: albumData.title,
-        description: albumData.description || null,
-        is_private: albumData.isPrivate || false,
-        moderation_enabled: albumData.moderationEnabled || false,
-        created_at: new Date().toISOString()
-      })
+      .insert(newAlbum)
       .select()
       .single();
     
-    if (error || !data) {
+    if (error) {
       console.error('Error creating album:', error);
       throw new Error(error?.message || 'Failed to create album');
     }
     
-    console.log("Album created in database:", data);
+    if (!data) {
+      console.error('No data returned after creating album');
+      throw new Error('Failed to create album - no data returned');
+    }
+    
+    console.log("Album created successfully:", data);
     
     return {
       id: data.id,
@@ -70,13 +83,18 @@ export const supabaseService = {
   },
   
   async getAlbumById(id: string): Promise<Album | null> {
+    if (!id) {
+      console.error("Cannot fetch album: ID is missing or empty");
+      return null;
+    }
+    
     console.log("Fetching album with ID:", id);
     
     const { data, error } = await supabase
       .from('albums')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle();
     
     if (error) {
       console.error('Error fetching album:', error);

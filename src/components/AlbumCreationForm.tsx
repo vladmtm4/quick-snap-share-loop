@@ -34,6 +34,13 @@ const AlbumCreationForm: React.FC = () => {
     setIsSubmitting(true);
     
     try {
+      console.log("Starting album creation with:", {
+        title,
+        description,
+        isPrivate,
+        moderationEnabled
+      });
+      
       const newAlbum = await supabaseService.createAlbum({
         title,
         description: description.trim() ? description : undefined,
@@ -48,12 +55,22 @@ const AlbumCreationForm: React.FC = () => {
         description: "Album created successfully!"
       });
       
-      navigate(`/album/${newAlbum.id}`);
+      if (newAlbum && newAlbum.id) {
+        console.log("Navigating to album page:", `/album/${newAlbum.id}`);
+        navigate(`/album/${newAlbum.id}`);
+      } else {
+        console.error("Cannot navigate: newAlbum or newAlbum.id is undefined", newAlbum);
+        toast({
+          title: "Warning",
+          description: "Album was created but there was an issue loading it",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
       console.error("Error creating album:", error);
       toast({
         title: "Error",
-        description: "Failed to create album",
+        description: "Failed to create album. Please try again.",
         variant: "destructive"
       });
     } finally {

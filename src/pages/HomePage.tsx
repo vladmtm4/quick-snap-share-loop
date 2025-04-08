@@ -15,11 +15,12 @@ const HomePage: React.FC = () => {
     async function loadAlbums() {
       setLoading(true);
       try {
+        console.log("HomePage: Loading albums");
         const allAlbums = await supabaseService.getAllAlbums();
-        console.log("All albums loaded:", allAlbums);
+        console.log("HomePage: All albums loaded:", allAlbums);
         setAlbums(allAlbums);
       } catch (error) {
-        console.error("Error loading albums:", error);
+        console.error("HomePage: Error loading albums:", error);
       } finally {
         setLoading(false);
       }
