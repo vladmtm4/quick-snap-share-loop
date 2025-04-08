@@ -2,6 +2,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 import { Album, Photo, UploadResponse } from "@/types";
+import { Database } from "@/integrations/supabase/types";
+
+// Type aliases for Supabase tables
+type AlbumsRow = Database['public']['Tables']['albums']['Row'];
+type PhotosRow = Database['public']['Tables']['photos']['Row'];
 
 export const supabaseService = {
   // Album methods
@@ -15,11 +20,11 @@ export const supabaseService = {
       return [];
     }
     
-    return data.map(album => ({
+    return (data || []).map(album => ({
       id: album.id,
       title: album.title,
       description: album.description || undefined,
-      createdAt: album.created_at,
+      createdAt: album.created_at || '',
       moderationEnabled: album.moderation_enabled || false,
       isPrivate: album.is_private || false,
       ownerId: album.owner_id || undefined
@@ -33,7 +38,7 @@ export const supabaseService = {
       .eq('id', id)
       .single();
     
-    if (error) {
+    if (error || !data) {
       console.error('Error fetching album:', error);
       return null;
     }
@@ -42,7 +47,7 @@ export const supabaseService = {
       id: data.id,
       title: data.title,
       description: data.description || undefined,
-      createdAt: data.created_at,
+      createdAt: data.created_at || '',
       moderationEnabled: data.moderation_enabled || false,
       isPrivate: data.is_private || false,
       ownerId: data.owner_id || undefined
@@ -61,12 +66,12 @@ export const supabaseService = {
       return [];
     }
     
-    return data.map(photo => ({
+    return (data || []).map(photo => ({
       id: photo.id,
       albumId: photo.album_id,
       url: photo.url,
       thumbnailUrl: photo.thumbnail_url,
-      createdAt: photo.created_at,
+      createdAt: photo.created_at || '',
       approved: photo.approved || false
     }));
   },
@@ -83,12 +88,12 @@ export const supabaseService = {
       return [];
     }
     
-    return data.map(photo => ({
+    return (data || []).map(photo => ({
       id: photo.id,
       albumId: photo.album_id,
       url: photo.url,
       thumbnailUrl: photo.thumbnail_url,
-      createdAt: photo.created_at,
+      createdAt: photo.created_at || '',
       approved: photo.approved || false
     }));
   },
@@ -111,14 +116,14 @@ export const supabaseService = {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error || !data) throw error;
       
       const photo: Photo = {
         id: data.id,
         albumId: data.album_id,
         url: data.url,
         thumbnailUrl: data.thumbnail_url,
-        createdAt: data.created_at,
+        createdAt: data.created_at || '',
         approved: data.approved || false
       };
       
@@ -144,14 +149,14 @@ export const supabaseService = {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error || !data) throw error;
       
       return {
         id: data.id,
         albumId: data.album_id,
         url: data.url,
         thumbnailUrl: data.thumbnail_url,
-        createdAt: data.created_at,
+        createdAt: data.created_at || '',
         approved: data.approved || false
       };
     } catch (error) {
