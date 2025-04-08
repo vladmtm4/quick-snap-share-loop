@@ -16,12 +16,24 @@ const SlideshowPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   
   const loadPhotos = useCallback(async () => {
-    if (!albumId) return;
+    if (!albumId) {
+      toast({
+        title: "Error",
+        description: "Album ID is missing",
+        variant: "destructive"
+      });
+      navigate("/");
+      return;
+    }
     
     try {
+      console.log("Fetching album with ID:", albumId);
       // Check if album exists
       const album = await supabaseService.getAlbumById(albumId);
+      console.log("Album data result:", album);
+      
       if (!album) {
+        console.error("Album not found for ID:", albumId);
         toast({
           title: "Album not found",
           description: "The album you're looking for doesn't exist",
@@ -33,6 +45,7 @@ const SlideshowPage: React.FC = () => {
       
       // Get approved photos for this album
       const approvedPhotos = await supabaseService.getApprovedPhotosByAlbumId(albumId);
+      console.log("Approved photos:", approvedPhotos);
       setPhotos(approvedPhotos);
     } catch (error) {
       console.error("Error loading photos:", error);

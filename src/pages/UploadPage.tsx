@@ -19,13 +19,25 @@ const UploadPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    if (!albumId) return;
+    if (!albumId) {
+      toast({
+        title: "Error",
+        description: "Album ID is missing",
+        variant: "destructive"
+      });
+      navigate("/");
+      return;
+    }
     
     async function loadAlbum() {
       try {
         setLoading(true);
+        console.log("Fetching album with ID:", albumId);
         const albumData = await supabaseService.getAlbumById(albumId);
+        console.log("Album data result:", albumData);
+        
         if (!albumData) {
+          console.error("Album not found for ID:", albumId);
           toast({
             title: "Album not found",
             description: "The album you're trying to upload to doesn't exist",

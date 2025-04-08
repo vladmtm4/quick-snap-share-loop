@@ -23,14 +23,25 @@ const AlbumPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    if (!albumId) return;
+    if (!albumId) {
+      toast({
+        title: "Error",
+        description: "Album ID is missing",
+        variant: "destructive"
+      });
+      navigate("/");
+      return;
+    }
     
     async function loadAlbumData() {
       setLoading(true);
       try {
         // Get album data
         const albumData = await supabaseService.getAlbumById(albumId);
+        console.log("Album data:", albumData);
+        
         if (!albumData) {
+          console.error("Album not found for ID:", albumId);
           toast({
             title: "Album not found",
             description: "The album you're looking for doesn't exist",
@@ -64,6 +75,8 @@ const AlbumPage: React.FC = () => {
     
     try {
       const allPhotos = await supabaseService.getPhotosByAlbumId(albumId);
+      console.log("All photos:", allPhotos);
+      
       const approved = allPhotos.filter(p => p.approved);
       const pending = allPhotos.filter(p => !p.approved);
       
