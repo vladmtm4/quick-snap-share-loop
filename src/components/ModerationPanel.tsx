@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { dbService } from "@/lib/db-service";
+import { supabaseService } from "@/lib/supabase-service";
 import { Photo } from "@/types";
 
 interface ModerationPanelProps {
@@ -18,13 +18,15 @@ const ModerationPanel: React.FC<ModerationPanelProps> = ({
   onPhotoApproved
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [processingPhotoId, setProcessingPhotoId] = useState<string | null>(null);
   const { toast } = useToast();
   
   const handleAction = async (photoId: string, approved: boolean) => {
     setIsSubmitting(true);
+    setProcessingPhotoId(photoId);
     
     try {
-      dbService.moderatePhoto(photoId, approved);
+      await supabaseService.moderatePhoto(photoId, approved);
       
       toast({
         title: approved ? "Photo approved" : "Photo rejected",
@@ -35,6 +37,7 @@ const ModerationPanel: React.FC<ModerationPanelProps> = ({
       
       onPhotoApproved();
     } catch (error) {
+      console.error("Error moderating photo:", error);
       toast({
         title: "Error",
         description: "Failed to moderate photo",
@@ -42,6 +45,7 @@ const ModerationPanel: React.FC<ModerationPanelProps> = ({
       });
     } finally {
       setIsSubmitting(false);
+      setProcessingPhotoId(null);
     }
   };
   
@@ -73,14 +77,14 @@ const ModerationPanel: React.FC<ModerationPanelProps> = ({
                   variant="outline"
                   className="flex-1"
                   onClick={() => handleAction(photo.id, false)}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting && processingPhotoId === photo.id}
                 >
                   Reject
                 </Button>
                 <Button
                   className="flex-1 bg-brand-blue hover:bg-brand-darkBlue"
                   onClick={() => handleAction(photo.id, true)}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting && processingPhotoId === photo.id}
                 >
                   Approve
                 </Button>

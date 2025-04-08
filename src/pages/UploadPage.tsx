@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import PhotoUploader from "@/components/PhotoUploader";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { dbService } from "@/lib/db-service";
+import { supabaseService } from "@/lib/supabase-service";
 import { Album } from "@/types";
 import { Images } from "lucide-react";
 
@@ -16,22 +16,40 @@ const UploadPage: React.FC = () => {
   
   const [album, setAlbum] = useState<Album | null>(null);
   const [uploadCount, setUploadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
     if (!albumId) return;
     
-    const albumData = dbService.getAlbumById(albumId);
-    if (!albumData) {
-      toast({
-        title: "Album not found",
-        description: "The album you're trying to upload to doesn't exist",
-        variant: "destructive"
-      });
-      navigate("/");
-      return;
+    async function loadAlbum() {
+      try {
+        setLoading(true);
+        const albumData = await supabaseService.getAlbumById(albumId);
+        if (!albumData) {
+          toast({
+            title: "Album not found",
+            description: "The album you're trying to upload to doesn't exist",
+            variant: "destructive"
+          });
+          navigate("/");
+          return;
+        }
+        
+        setAlbum(albumData);
+      } catch (error) {
+        console.error("Error loading album:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load album data",
+          variant: "destructive"
+        });
+        navigate("/");
+      } finally {
+        setLoading(false);
+      }
     }
     
-    setAlbum(albumData);
+    loadAlbum();
   }, [albumId, navigate, toast]);
   
   const handleUploadComplete = () => {
@@ -53,10 +71,18 @@ const UploadPage: React.FC = () => {
     }
   };
   
-  if (!album) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p>Loading...</p>
+      </div>
+    );
+  }
+  
+  if (!album) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Album not found</p>
       </div>
     );
   }

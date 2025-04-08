@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { Upload, Image as ImageIcon } from "lucide-react";
-import { dbService } from "@/lib/db-service";
-import { fileToDataUrl, createThumbnail } from "@/lib/file-service";
+import { supabaseService } from "@/lib/supabase-service";
 import { Album } from "@/types";
 
 interface PhotoUploaderProps {
@@ -35,8 +34,11 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
     
     setSelectedFile(file);
     try {
-      const dataUrl = await fileToDataUrl(file);
-      setPreviewUrl(dataUrl);
+      const reader = new FileReader();
+      reader.onload = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     } catch (error) {
       toast({
         title: "Error",
@@ -52,18 +54,27 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
     setIsUploading(true);
     
     try {
-      // Convert file to data URL
-      const dataUrl = await fileToDataUrl(selectedFile);
-      // Create thumbnail
-      const thumbnailUrl = await createThumbnail(selectedFile);
+      // Upload to Supabase storage
+      const storageResult = await supabaseService.uploadImageToStorage(
+        album.id,
+        selectedFile
+      );
       
-      // Add to database
-      dbService.addPhoto({
+      if (!storageResult) {
+        throw new Error("Failed to upload to storage");
+      }
+      
+      // Add photo record to database
+      const result = await supabaseService.addPhoto({
         albumId: album.id,
-        url: dataUrl,
-        thumbnailUrl: thumbnailUrl,
+        url: storageResult.url,
+        thumbnailUrl: storageResult.thumbnailUrl,
         approved: !album.moderationEnabled // Auto-approve if moderation is disabled
       });
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
       
       toast({
         title: "Success",
@@ -79,6 +90,7 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
         onUploadComplete();
       }
     } catch (error) {
+      console.error("Upload error:", error);
       toast({
         title: "Error",
         description: "Failed to upload photo",

@@ -9,7 +9,71 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      albums: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_private: boolean | null
+          moderation_enabled: boolean | null
+          owner_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_private?: boolean | null
+          moderation_enabled?: boolean | null
+          owner_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_private?: boolean | null
+          moderation_enabled?: boolean | null
+          owner_id?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      photos: {
+        Row: {
+          album_id: string
+          approved: boolean | null
+          created_at: string | null
+          id: string
+          thumbnail_url: string
+          url: string
+        }
+        Insert: {
+          album_id: string
+          approved?: boolean | null
+          created_at?: string | null
+          id?: string
+          thumbnail_url: string
+          url: string
+        }
+        Update: {
+          album_id?: string
+          approved?: boolean | null
+          created_at?: string | null
+          id?: string
+          thumbnail_url?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photos_album_id_fkey"
+            columns: ["album_id"]
+            isOneToOne: false
+            referencedRelation: "albums"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
