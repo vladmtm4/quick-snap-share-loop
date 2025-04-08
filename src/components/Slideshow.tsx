@@ -16,7 +16,7 @@ const Slideshow: React.FC<SlideshowProps> = ({
   photos, 
   albumId,
   autoRefresh = true, 
-  interval = 5000 
+  interval = 15000 // Changed default to 15 seconds 
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);

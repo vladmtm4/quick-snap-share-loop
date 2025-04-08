@@ -57,7 +57,7 @@ const SlideshowPage: React.FC = () => {
   useEffect(() => {
     loadPhotos();
     
-    // Set up real-time subscription for new photos
+    // Set up real-time subscription for new or updated photos
     const channel = supabase
       .channel('public:photos')
       .on('postgres_changes', 
@@ -67,13 +67,18 @@ const SlideshowPage: React.FC = () => {
           table: 'photos',
           filter: `album_id=eq.${albumId}`
         }, 
-        () => {
-          loadPhotos();
+        (payload) => {
+          console.log("Real-time photo update detected:", payload);
+          loadPhotos(); // Reload all photos when any change is detected
         }
       )
       .subscribe();
     
+    // Log subscription success
+    console.log("Real-time subscription activated for album:", albumId);
+    
     return () => {
+      console.log("Cleaning up real-time subscription");
       supabase.removeChannel(channel);
     };
   }, [albumId, loadPhotos]);
@@ -96,7 +101,7 @@ const SlideshowPage: React.FC = () => {
   
   return (
     <div className="h-screen w-screen overflow-hidden bg-black">
-      <Slideshow photos={photos} albumId={albumId} />
+      <Slideshow photos={photos} albumId={albumId} interval={15000} />
     </div>
   );
 };
