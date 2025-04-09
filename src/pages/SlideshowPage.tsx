@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Slideshow from "@/components/Slideshow";
@@ -14,6 +13,7 @@ const SlideshowPage: React.FC = () => {
   
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [photosUpdated, setPhotosUpdated] = useState(0); // Counter to track updates
   
   const loadPhotos = useCallback(async () => {
     if (!albumId) {
@@ -45,8 +45,9 @@ const SlideshowPage: React.FC = () => {
       
       // Get approved photos for this album
       const approvedPhotos = await supabaseService.getApprovedPhotosByAlbumId(albumId);
-      console.log("Approved photos:", approvedPhotos);
+      console.log("Approved photos loaded:", approvedPhotos.length);
       setPhotos(approvedPhotos);
+      setPhotosUpdated(prevCount => prevCount + 1); // Increment update counter
     } catch (error) {
       console.error("Error loading photos:", error);
     } finally {
@@ -77,29 +78,52 @@ const SlideshowPage: React.FC = () => {
             // Check if this is a new photo or an update to an existing one
             if (payload.eventType === 'INSERT') {
               console.log("New photo detected, adding to slideshow:", payload.new);
+              
+              // Use the functional update pattern to ensure we're working with the latest state
               setPhotos(currentPhotos => {
                 const newPhoto = payload.new as Photo;
+                
                 // Check if the photo already exists in our array to prevent duplicates
                 if (currentPhotos.some(photo => photo.id === newPhoto.id)) {
+                  console.log("Photo already exists in slideshow, skipping");
                   return currentPhotos;
                 }
-                return [...currentPhotos, newPhoto];
+                
+                console.log("Adding new photo to slideshow state, current count:", currentPhotos.length);
+                // Create a new array to ensure React detects the state change
+                const updatedPhotos = [...currentPhotos, newPhoto];
+                console.log("New photo count:", updatedPhotos.length);
+                
+                // Also increment the update counter to signal to child components
+                setPhotosUpdated(prevCount => prevCount + 1);
+                
+                return updatedPhotos;
+              });
+              
+              // Notify about new photo
+              toast({
+                title: "New photo added",
+                description: "A new photo was added to the slideshow",
               });
             } else {
               // For updates, replace the existing photo
               console.log("Updated photo detected:", payload.new);
-              setPhotos(currentPhotos => 
-                currentPhotos.map(photo => 
-                  photo.id === payload.new.id ? payload.new as Photo : photo
-                )
-              );
+              setPhotos(currentPhotos => {
+                const updatedPhotos = currentPhotos.map(photo => 
+                  photo.id === payload.new.id ? {...photo, ...payload.new as Photo} : photo
+                );
+                setPhotosUpdated(prevCount => prevCount + 1);
+                return updatedPhotos;
+              });
             }
           } else if (payload.eventType === 'DELETE') {
             // Remove deleted photos
             console.log("Deleted photo detected:", payload.old);
-            setPhotos(currentPhotos => 
-              currentPhotos.filter(photo => photo.id !== payload.old.id)
-            );
+            setPhotos(currentPhotos => {
+              const updatedPhotos = currentPhotos.filter(photo => photo.id !== payload.old.id);
+              setPhotosUpdated(prevCount => prevCount + 1);
+              return updatedPhotos;
+            });
           }
         }
       )
@@ -115,11 +139,23 @@ const SlideshowPage: React.FC = () => {
     // Log subscription success
     console.log("Real-time subscription activated for album:", albumId);
     
+    // Refresh photos every 30 seconds as a backup mechanism
+    const refreshInterval = setInterval(() => {
+      console.log("Periodic refresh of photos");
+      loadPhotos();
+    }, 30000);
+    
     return () => {
-      console.log("Cleaning up real-time subscription");
+      console.log("Cleaning up real-time subscription and intervals");
+      clearInterval(refreshInterval);
       supabase.removeChannel(channel);
     };
-  }, [albumId, loadPhotos]);
+  }, [albumId, loadPhotos, toast]);
+  
+  // Add debug logging whenever photos state changes
+  useEffect(() => {
+    console.log(`Photos state updated: ${photos.length} photos available`);
+  }, [photos]);
   
   if (loading) {
     return (
@@ -139,7 +175,12 @@ const SlideshowPage: React.FC = () => {
   
   return (
     <div className="h-screen w-screen overflow-hidden bg-black">
-      <Slideshow photos={photos} albumId={albumId} interval={8000} />
+      <Slideshow 
+        photos={photos} 
+        albumId={albumId} 
+        interval={8000}
+        updateSignal={photosUpdated} // Pass a signal to the component when photos change
+      />
     </div>
   );
 };

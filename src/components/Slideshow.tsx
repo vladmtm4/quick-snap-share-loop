@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Play, Pause } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -10,17 +9,53 @@ interface SlideshowProps {
   albumId: string;
   autoRefresh?: boolean;
   interval?: number;
+  updateSignal?: number; // Signal to detect when photos array changes
 }
 
 const Slideshow: React.FC<SlideshowProps> = ({ 
   photos, 
   albumId,
   autoRefresh = true, 
-  interval = 8000 // 8 seconds interval
+  interval = 8000, // 8 seconds interval
+  updateSignal = 0
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
+  const prevPhotoCount = useRef(photos.length);
   const navigate = useNavigate();
+  
+  // Add logging when photos prop changes
+  useEffect(() => {
+    console.log(`Slideshow component received ${photos.length} photos (previous: ${prevPhotoCount.current})`);
+    
+    // Handle changes in the photos array while preserving current position
+    if (photos.length !== prevPhotoCount.current) {
+      console.log(`Photo bucket size changed: ${prevPhotoCount.current} -> ${photos.length}`);
+      
+      // If new photos were added and we're already at the end, we might want to let the slideshow
+      // continue from current position instead of jumping
+      if (photos.length > prevPhotoCount.current) {
+        console.log("New photos have been added to the slideshow");
+        // Keep the current index unless it's now out of bounds
+        if (currentIndex >= photos.length) {
+          console.log("Current index out of bounds, resetting to 0");
+          setCurrentIndex(0);
+        } else {
+          console.log(`Maintaining current position at index ${currentIndex}`);
+          // We keep the current index (no need to update it)
+        }
+      } else {
+        // If photos were removed, ensure current index is valid
+        if (currentIndex >= photos.length && photos.length > 0) {
+          console.log("Current index out of bounds after photos were removed, adjusting");
+          setCurrentIndex(Math.max(photos.length - 1, 0));
+        }
+      }
+      
+      // Update our reference
+      prevPhotoCount.current = photos.length;
+    }
+  }, [photos, updateSignal, currentIndex]);
   
   const goBack = () => {
     navigate(`/album/${albumId}`);
@@ -31,19 +66,10 @@ const Slideshow: React.FC<SlideshowProps> = ({
     setCurrentIndex((prevIndex) => (prevIndex + 1) % photos.length);
   }, [photos.length]);
   
-  // When photos array changes (new photos added), update the slideshow accordingly
-  useEffect(() => {
-    // If we're at the end of the slides and new photos are added, we can continue with new photos
-    if (currentIndex >= photos.length && photos.length > 0) {
-      setCurrentIndex(0);
-    }
-    console.log(`Slideshow photos updated: ${photos.length} photos available`);
-  }, [photos, currentIndex]);
-  
   // Handle auto-advancing slides when playing
   useEffect(() => {
     if (isPlaying && photos.length > 0) {
-      console.log(`Setting up timer for ${interval}ms`);
+      console.log(`Setting up timer for ${interval}ms, current index: ${currentIndex}, total photos: ${photos.length}`);
       const timer = setTimeout(goToNextSlide, interval);
       return () => clearTimeout(timer);
     }
