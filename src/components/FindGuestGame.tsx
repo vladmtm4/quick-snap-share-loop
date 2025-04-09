@@ -43,7 +43,7 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId }) => {
         }
         
         // If we have guest names in the metadata, pick a random one
-        if (data?.guest_list && Array.isArray(data.guest_list) && data.guest_list.length > 0) {
+        if (data && data.guest_list && Array.isArray(data.guest_list) && data.guest_list.length > 0) {
           const randomIndex = Math.floor(Math.random() * data.guest_list.length);
           setAssignment(data.guest_list[randomIndex]);
         } else {

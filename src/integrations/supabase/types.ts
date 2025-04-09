@@ -13,6 +13,7 @@ export type Database = {
         Row: {
           created_at: string | null
           description: string | null
+          guest_list: string[] | null
           id: string
           is_private: boolean | null
           moderation_enabled: boolean | null
@@ -22,6 +23,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           description?: string | null
+          guest_list?: string[] | null
           id?: string
           is_private?: boolean | null
           moderation_enabled?: boolean | null
@@ -31,6 +33,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           description?: string | null
+          guest_list?: string[] | null
           id?: string
           is_private?: boolean | null
           moderation_enabled?: boolean | null
@@ -45,6 +48,7 @@ export type Database = {
           approved: boolean | null
           created_at: string | null
           id: string
+          metadata: Json | null
           thumbnail_url: string
           url: string
         }
@@ -53,6 +57,7 @@ export type Database = {
           approved?: boolean | null
           created_at?: string | null
           id?: string
+          metadata?: Json | null
           thumbnail_url: string
           url: string
         }
@@ -61,6 +66,7 @@ export type Database = {
           approved?: boolean | null
           created_at?: string | null
           id?: string
+          metadata?: Json | null
           thumbnail_url?: string
           url?: string
         }
