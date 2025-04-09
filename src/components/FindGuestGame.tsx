@@ -8,7 +8,7 @@ import { guestService } from '@/lib/guest-service';
 import { useLanguage } from '@/lib/i18n';
 import { Guest } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
-import { ChevronsRight, Camera, UserSearch } from 'lucide-react';
+import { ChevronsRight, Camera, UserSearch, UserRound, RefreshCw } from 'lucide-react';
 
 interface FindGuestGameProps {
   albumId: string;
@@ -27,6 +27,7 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   const [randomGuest, setRandomGuest] = useState<Guest | null>(null);
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [changingGuest, setChangingGuest] = useState(false);
   const [error, setError] = useState('');
   
   useEffect(() => {
@@ -68,7 +69,7 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
       
       if (error) {
         console.error("Error checking for previous assignment:", error);
-        getOrAssignRandomGuest();
+        getOrAssignRandomGuest(true);
         return;
       }
       
@@ -78,17 +79,26 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
         console.log("Found previously assigned guest:", assignedGuest);
       } else {
         // Otherwise get a new assignment
-        getOrAssignRandomGuest();
+        getOrAssignRandomGuest(true);
       }
     } catch (err) {
       console.error("Error in checkForPreviousAssignment:", err);
-      getOrAssignRandomGuest();
+      getOrAssignRandomGuest(true);
     }
   };
   
-  const getOrAssignRandomGuest = async () => {
+  const getOrAssignRandomGuest = async (initialLoad = false, forceNew = false) => {
     try {
-      setLoading(true);
+      if (!initialLoad) {
+        setChangingGuest(true);
+      } else {
+        setLoading(true);
+      }
+      
+      // If forceNew is true, first clear the current assignment
+      if (forceNew && randomGuest) {
+        await guestService.clearGuestAssignment(albumId);
+      }
       
       // Try to get an unassigned guest
       const { data: guest, error } = await guestService.getUnassignedGuest(albumId);
@@ -115,7 +125,11 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      if (!initialLoad) {
+        setChangingGuest(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
   
@@ -138,6 +152,14 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
     
     await guestService.resetAllGuestAssignments(albumId);
     getOrAssignRandomGuest();
+  };
+  
+  const handleChangeGuest = async () => {
+    await getOrAssignRandomGuest(false, true);
+    toast({
+      title: "Guest Changed",
+      description: "You've been assigned a new guest!",
+    });
   };
   
   const handleTakePhoto = () => {
@@ -200,9 +222,16 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
                   )}
                   
                   <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-                    {isAdmin && (
-                      <Button onClick={handleResetGame} variant="outline" className="sm:flex-1">Reset Game</Button>
-                    )}
+                    <Button 
+                      onClick={handleChangeGuest} 
+                      variant="outline"
+                      disabled={changingGuest}
+                      className="sm:flex-1"
+                    >
+                      <UserRound className="mr-2 h-4 w-4" />
+                      {changingGuest ? "Changing..." : "This isn't me"}
+                    </Button>
+                    
                     <Button 
                       onClick={handleTakePhoto} 
                       className="bg-brand-blue hover:bg-brand-darkBlue sm:flex-1"
@@ -210,6 +239,17 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
                       <Camera className="mr-2 h-4 w-4" />
                       Take Photo
                     </Button>
+                    
+                    {isAdmin && (
+                      <Button 
+                        onClick={handleResetGame} 
+                        variant="outline" 
+                        className="sm:flex-1"
+                      >
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Reset Game
+                      </Button>
+                    )}
                   </div>
                 </div>
               ) : (
