@@ -52,6 +52,7 @@ export type Database = {
           guestname: string
           id: string
           phone: string | null
+          photo_url: string | null
         }
         Insert: {
           albumid: string
@@ -62,6 +63,7 @@ export type Database = {
           guestname: string
           id?: string
           phone?: string | null
+          photo_url?: string | null
         }
         Update: {
           albumid?: string
@@ -72,6 +74,7 @@ export type Database = {
           guestname?: string
           id?: string
           phone?: string | null
+          photo_url?: string | null
         }
         Relationships: [
           {

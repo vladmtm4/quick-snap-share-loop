@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 import { Guest, GuestResponse, SingleGuestResponse } from "@/types";
@@ -183,7 +184,7 @@ export const guestService = {
         email: guestData.email || null,
         phone: guestData.phone || null,
         approved: false,
-        assigned: false, // Using direct property assignment
+        assigned: false,
         created_at: new Date().toISOString(),
         photo_url: guestData.photoUrl || null
       };
