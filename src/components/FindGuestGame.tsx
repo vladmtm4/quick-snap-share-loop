@@ -32,6 +32,8 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   const [guestAssigned, setGuestAssigned] = useState(false);
   // Track if the user has rejected a guest because it was themselves
   const [hasRejectedSelf, setHasRejectedSelf] = useState(false);
+  // Track if the user has accepted the challenge
+  const [challengeAccepted, setChallengeAccepted] = useState(false);
   const [error, setError] = useState('');
   
   useEffect(() => {
@@ -89,10 +91,21 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
         const hasRejected = localStorage.getItem(`rejected_self_${albumId}`) === 'true';
         setHasRejectedSelf(hasRejected);
         
-        toast({
-          title: "Welcome Back!",
-          description: `Your challenge: Find ${assignedGuest.guestName}!`,
-        });
+        // Check if user has already accepted the challenge
+        const hasAccepted = localStorage.getItem(`accepted_challenge_${albumId}`) === 'true';
+        setChallengeAccepted(hasAccepted);
+        
+        if (hasAccepted) {
+          toast({
+            title: "Welcome Back!",
+            description: `Find ${assignedGuest.guestName} and take a photo!`,
+          });
+        } else {
+          toast({
+            title: "Welcome Back!",
+            description: `Your challenge: Find ${assignedGuest.guestName}!`,
+          });
+        }
       } else {
         setGuestAssigned(false);
       }
@@ -177,9 +190,12 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
     setAllFoundGuests({});
     setScore(0);
     setHasRejectedSelf(false);
+    setChallengeAccepted(false);
     
     // Clear the stored rejection flag
     localStorage.removeItem(`rejected_self_${albumId}`);
+    // Clear the stored acceptance flag
+    localStorage.removeItem(`accepted_challenge_${albumId}`);
     
     // Clear the stored assignment for this album
     localStorage.removeItem(`album_${albumId}_device_${localStorage.getItem('device_id')}`);
@@ -197,7 +213,8 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   };
   
   const handleAcceptChallenge = async () => {
-    setGuestAssigned(true);
+    setChallengeAccepted(true);
+    localStorage.setItem(`accepted_challenge_${albumId}`, 'true');
     // This will confirm the current guest assignment
     toast({
       title: "Challenge Accepted!",
@@ -287,39 +304,35 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
                     </div>
                   )}
                   
-                  <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-                    {/* Only show Change Guest button if user hasn't rejected a guest yet */}
-                    {!hasRejectedSelf && (
-                      <Button 
-                        onClick={handleChangeGuest} 
-                        variant="outline"
-                        disabled={changingGuest}
-                        className="sm:flex-1"
-                      >
-                        <UserRound className="mr-2 h-4 w-4" />
-                        {changingGuest ? "Changing..." : "This is me"}
-                      </Button>
-                    )}
-                    
-                    {/* Auto-accept after rejecting self, or show accept button */}
-                    {hasRejectedSelf ? (
+                  {challengeAccepted ? (
+                    // When challenge is accepted, only show the Take Photo button
+                    <div className="flex justify-center">
                       <Button 
                         onClick={handleTakePhoto} 
-                        className="bg-brand-blue hover:bg-brand-darkBlue sm:flex-1"
+                        className="bg-brand-blue hover:bg-brand-darkBlue px-8 py-3 text-lg"
                       >
-                        <Camera className="mr-2 h-4 w-4" />
+                        <Camera className="mr-2 h-5 w-5" />
                         Take Photo
                       </Button>
-                    ) : (
-                      <>
-                        <Button
-                          onClick={handleAcceptChallenge}
-                          className="bg-green-600 hover:bg-green-700 sm:flex-1"
+                    </div>
+                  ) : (
+                    // Before accepting, show the standard buttons
+                    <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
+                      {/* Only show Change Guest button if user hasn't rejected a guest yet */}
+                      {!hasRejectedSelf && (
+                        <Button 
+                          onClick={handleChangeGuest} 
+                          variant="outline"
+                          disabled={changingGuest}
+                          className="sm:flex-1"
                         >
-                          <Check className="mr-2 h-4 w-4" />
-                          Accept Challenge
+                          <UserRound className="mr-2 h-4 w-4" />
+                          {changingGuest ? "Changing..." : "This is me"}
                         </Button>
-                        
+                      )}
+                      
+                      {/* Auto-accept after rejecting self, or show accept button */}
+                      {hasRejectedSelf ? (
                         <Button 
                           onClick={handleTakePhoto} 
                           className="bg-brand-blue hover:bg-brand-darkBlue sm:flex-1"
@@ -327,20 +340,38 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
                           <Camera className="mr-2 h-4 w-4" />
                           Take Photo
                         </Button>
-                      </>
-                    )}
-                    
-                    {isAdmin && (
-                      <Button 
-                        onClick={handleResetGame} 
-                        variant="outline" 
-                        className="sm:flex-1"
-                      >
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Reset Game
-                      </Button>
-                    )}
-                  </div>
+                      ) : (
+                        <>
+                          <Button
+                            onClick={handleAcceptChallenge}
+                            className="bg-green-600 hover:bg-green-700 sm:flex-1"
+                          >
+                            <Check className="mr-2 h-4 w-4" />
+                            Accept Challenge
+                          </Button>
+                          
+                          <Button 
+                            onClick={handleTakePhoto} 
+                            className="bg-brand-blue hover:bg-brand-darkBlue sm:flex-1"
+                          >
+                            <Camera className="mr-2 h-4 w-4" />
+                            Take Photo
+                          </Button>
+                        </>
+                      )}
+                      
+                      {isAdmin && (
+                        <Button 
+                          onClick={handleResetGame} 
+                          variant="outline" 
+                          className="sm:flex-1"
+                        >
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Reset Game
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center">
