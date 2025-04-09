@@ -38,6 +38,7 @@ export interface Guest {
   phone?: string;
   approved?: boolean;
   created_at?: string;
+  assigned?: boolean;
 }
 
 // Responses from supabase guest methods

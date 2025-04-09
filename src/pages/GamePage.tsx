@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import FindGuestGame from "@/components/FindGuestGame";
+import ModeratorTabs from "@/components/ModeratorTabs";
 import { supabaseService } from "@/lib/supabase-service";
 import { Album } from "@/types";
 
@@ -64,6 +65,7 @@ const GamePage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="container max-w-3xl py-8 px-4">
+        <ModeratorTabs album={album} currentTab="game" />
         <FindGuestGame albumId={album.id} onClose={handleClose} />
       </div>
     </div>

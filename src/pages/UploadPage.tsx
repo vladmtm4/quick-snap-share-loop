@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
 import PhotoUploader from "@/components/PhotoUploader";
+import ModeratorTabs from "@/components/ModeratorTabs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { supabaseService } from "@/lib/supabase-service";
@@ -13,6 +14,8 @@ const UploadPage: React.FC = () => {
   const { albumId } = useParams<{ albumId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const isGameMode = searchParams.get('gameMode') === 'true';
   
   const [album, setAlbum] = useState<Album | null>(null);
   const [uploadCount, setUploadCount] = useState(0);
@@ -110,6 +113,8 @@ const UploadPage: React.FC = () => {
             Upload your photos to "{album.title}"
           </p>
         </div>
+        
+        {!isGameMode && <ModeratorTabs album={album} currentTab="upload" />}
         
         <PhotoUploader 
           album={album} 

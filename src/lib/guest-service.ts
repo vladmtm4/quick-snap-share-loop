@@ -28,13 +28,137 @@ export const guestService = {
         email: item.email || undefined,
         phone: item.phone || undefined,
         approved: item.approved,
-        created_at: item.created_at
+        created_at: item.created_at,
+        assigned: item.assigned || false
       }));
       
       return { data: guests, error: null };
     } catch (error) {
       console.error("Error in getAllGuestsForAlbum:", error);
       return { data: null, error };
+    }
+  },
+  
+  async getUnassignedGuest(albumId: string): Promise<SingleGuestResponse> {
+    console.log("Fetching unassigned guest for album:", albumId);
+    
+    try {
+      // Get a random unassigned guest
+      const { data, error } = await supabase
+        .from('guests')
+        .select('*')
+        .eq('albumid', albumId)
+        .eq('approved', true)
+        .eq('assigned', false)
+        .limit(1)
+        .single();
+      
+      if (error) {
+        // If no unassigned guests are found, reset all assignments and try again
+        if (error.code === 'PGRST116') {
+          await this.resetAllGuestAssignments(albumId);
+          const { data: resetData, error: resetError } = await supabase
+            .from('guests')
+            .select('*')
+            .eq('albumid', albumId)
+            .eq('approved', true)
+            .limit(1)
+            .single();
+            
+          if (resetError) {
+            console.error("Error fetching guest after reset:", resetError);
+            return { data: null, error: resetError };
+          }
+          
+          if (!resetData) {
+            return { data: null, error: new Error("No approved guests available") };
+          }
+          
+          // Mark this guest as assigned
+          await this.markGuestAsAssigned(resetData.id);
+          
+          const guest: Guest = {
+            id: resetData.id,
+            albumId: resetData.albumid,
+            guestName: resetData.guestname,
+            email: resetData.email || undefined,
+            phone: resetData.phone || undefined,
+            approved: resetData.approved,
+            created_at: resetData.created_at,
+            assigned: true
+          };
+          
+          return { data: guest, error: null };
+        }
+        
+        console.error("Error fetching unassigned guest:", error);
+        return { data: null, error };
+      }
+      
+      if (!data) {
+        return { data: null, error: new Error("No unassigned guests available") };
+      }
+      
+      // Mark this guest as assigned
+      await this.markGuestAsAssigned(data.id);
+      
+      const guest: Guest = {
+        id: data.id,
+        albumId: data.albumid,
+        guestName: data.guestname,
+        email: data.email || undefined,
+        phone: data.phone || undefined,
+        approved: data.approved,
+        created_at: data.created_at,
+        assigned: true
+      };
+      
+      return { data: guest, error: null };
+    } catch (error) {
+      console.error("Error in getUnassignedGuest:", error);
+      return { data: null, error };
+    }
+  },
+  
+  async resetAllGuestAssignments(albumId: string): Promise<boolean> {
+    console.log("Resetting all guest assignments for album:", albumId);
+    
+    try {
+      const { error } = await supabase
+        .from('guests')
+        .update({ assigned: false })
+        .eq('albumid', albumId);
+      
+      if (error) {
+        console.error("Error resetting guest assignments:", error);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error in resetAllGuestAssignments:", error);
+      return false;
+    }
+  },
+  
+  async markGuestAsAssigned(guestId: string): Promise<boolean> {
+    console.log("Marking guest as assigned:", guestId);
+    
+    try {
+      const { error } = await supabase
+        .from('guests')
+        .update({ assigned: true })
+        .eq('id', guestId);
+      
+      if (error) {
+        console.error("Error marking guest as assigned:", error);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error in markGuestAsAssigned:", error);
+      return false;
     }
   },
   
@@ -49,6 +173,7 @@ export const guestService = {
         email: guestData.email || null,
         phone: guestData.phone || null,
         approved: false,
+        assigned: false,
         created_at: new Date().toISOString()
       };
       
@@ -70,7 +195,8 @@ export const guestService = {
         email: data.email || undefined,
         phone: data.phone || undefined,
         approved: data.approved,
-        created_at: data.created_at
+        created_at: data.created_at,
+        assigned: data.assigned || false
       };
       
       return { data: guest, error: null };

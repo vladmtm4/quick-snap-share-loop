@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { guestService } from '@/lib/guest-service';
 import { useLanguage } from '@/lib/i18n';
 import { Guest } from '@/types';
+import { useToast } from '@/components/ui/use-toast';
+import { ChevronsRight, Camera, UserSearch } from 'lucide-react';
 
 interface FindGuestGameProps {
   albumId: string;
@@ -17,6 +19,7 @@ interface FindGuestGameProps {
 const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   const navigate = useNavigate();
   const { translate } = useLanguage();
+  const { toast } = useToast();
   
   const [guestData, setGuestData] = useState<Guest[]>([]);
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
@@ -39,7 +42,7 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
         
         const guestsList = data || [];
         setGuestData(guestsList);
-        pickRandomGuest(guestsList);
+        getOrAssignRandomGuest();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load guests');
       } finally {
@@ -50,22 +53,32 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
     fetchGuests();
   }, [albumId]);
   
-  const pickRandomGuest = (guests: Guest[]) => {
-    if (guests.length === 0) return;
-    
-    const approvedGuests = guests.filter(guest => guest.approved !== false);
-    if (approvedGuests.length === 0) {
-      setRandomGuest(null);
-      return;
-    }
-    
-    const notFoundGuests = approvedGuests.filter(g => !allFoundGuests[g.id]);
-    
-    if (notFoundGuests.length === 0) {
-      setAllFoundGuests({});
-      setRandomGuest(approvedGuests[Math.floor(Math.random() * approvedGuests.length)]);
-    } else {
-      setRandomGuest(notFoundGuests[Math.floor(Math.random() * notFoundGuests.length)]);
+  const getOrAssignRandomGuest = async () => {
+    try {
+      setLoading(true);
+      
+      // Try to get an unassigned guest
+      const { data: guest, error } = await guestService.getUnassignedGuest(albumId);
+      
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to assign a guest. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setRandomGuest(guest);
+    } catch (err) {
+      console.error("Error getting random guest:", err);
+      toast({
+        title: "Error",
+        description: "Failed to assign a guest. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -77,21 +90,44 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
       setAllFoundGuests(newFoundGuests);
       setScore(score + 1);
       
-      pickRandomGuest(guestData);
+      // Get a new random guest
+      getOrAssignRandomGuest();
     }
   };
   
-  const handleResetGame = () => {
+  const handleResetGame = async () => {
     setAllFoundGuests({});
     setScore(0);
-    pickRandomGuest(guestData);
+    await guestService.resetAllGuestAssignments(albumId);
+    getOrAssignRandomGuest();
   };
+  
+  const handleTakePhoto = () => {
+    if (randomGuest) {
+      navigate(`/upload/${albumId}?gameMode=true&assignment=${randomGuest.guestName}`);
+    }
+  };
+  
+  if (loading && guestData.length === 0) {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">Loading game...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-4">
       <Tabs defaultValue="find" onValueChange={(value) => setGameMode(value as 'find' | 'list')}>
         <TabsList className="w-full">
-          <TabsTrigger value="find" className="flex-1">Find a Guest</TabsTrigger>
+          <TabsTrigger value="find" className="flex-1">
+            <UserSearch className="mr-2 h-4 w-4" />
+            Find a Guest
+          </TabsTrigger>
           <TabsTrigger value="list" className="flex-1">Guest List</TabsTrigger>
         </TabsList>
         
@@ -105,7 +141,16 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
               {randomGuest ? (
                 <div className="text-center">
                   <h3 className="text-2xl font-bold mb-4">{randomGuest.guestName}</h3>
-                  <Button onClick={handleResetGame} variant="outline">Reset Game</Button>
+                  <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
+                    <Button onClick={handleResetGame} variant="outline" className="sm:flex-1">Reset Game</Button>
+                    <Button 
+                      onClick={handleTakePhoto} 
+                      className="bg-brand-blue hover:bg-brand-darkBlue sm:flex-1"
+                    >
+                      <Camera className="mr-2 h-4 w-4" />
+                      Take Photo
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center">

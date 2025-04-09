@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import GuestManager from "@/components/GuestManager";
+import ModeratorTabs from "@/components/ModeratorTabs";
 import { supabaseService } from "@/lib/supabase-service";
 import { Album } from "@/types";
 import { useToast } from "@/components/ui/use-toast";
@@ -88,6 +89,7 @@ const GuestManagerPage: React.FC = () => {
         <h1 className="text-2xl font-bold mb-6 text-center">
           {translate("guestManagement")} - {album.title}
         </h1>
+        <ModeratorTabs album={album} currentTab="guests" />
         <GuestManager albumId={album.id} />
       </div>
     </div>
