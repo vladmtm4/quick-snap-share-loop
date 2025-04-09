@@ -124,14 +124,21 @@ export const guestService = {
     console.log("Resetting all guest assignments for album:", albumId);
     
     try {
-      const { error } = await supabase
-        .from('guests')
-        .update({ assigned: false })
-        .eq('albumid', albumId);
+      // Use a raw update query to set 'assigned' to false for all guests in the album
+      const { error } = await supabase.rpc('reset_guest_assignments', { album_id: albumId });
       
       if (error) {
-        console.error("Error resetting guest assignments:", error);
-        return false;
+        // If RPC doesn't exist yet, fall back to regular update
+        console.log("RPC not found, using update query instead");
+        const { error: updateError } = await supabase
+          .from('guests')
+          .update({ assigned: false })
+          .eq('albumid', albumId);
+          
+        if (updateError) {
+          console.error("Error resetting guest assignments:", updateError);
+          return false;
+        }
       }
       
       return true;

@@ -46,6 +46,7 @@ export type Database = {
         Row: {
           albumid: string
           approved: boolean | null
+          assigned: boolean | null
           created_at: string | null
           email: string | null
           guestname: string
@@ -55,6 +56,7 @@ export type Database = {
         Insert: {
           albumid: string
           approved?: boolean | null
+          assigned?: boolean | null
           created_at?: string | null
           email?: string | null
           guestname: string
@@ -64,6 +66,7 @@ export type Database = {
         Update: {
           albumid?: string
           approved?: boolean | null
+          assigned?: boolean | null
           created_at?: string | null
           email?: string | null
           guestname?: string
