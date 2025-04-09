@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { supabaseService } from '@/lib/supabase-service';
+import { guestService } from '@/lib/guest-service';
 import { Loader2, X, Check, UserPlus, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Guest } from '@/types';
@@ -27,7 +27,7 @@ const GuestManager: React.FC<GuestManagerProps> = ({ albumId }) => {
   const loadGuests = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabaseService.getAllGuestsForAlbum(albumId);
+      const { data, error } = await guestService.getAllGuestsForAlbum(albumId);
       if (error) throw error;
       
       setGuests(data || []);
@@ -48,7 +48,7 @@ const GuestManager: React.FC<GuestManagerProps> = ({ albumId }) => {
     
     setAdding(true);
     try {
-      const { data, error } = await supabaseService.addGuestToAlbum(albumId, {
+      const { data, error } = await guestService.addGuestToAlbum(albumId, {
         guestName: newGuest.trim(),
       });
       
@@ -75,7 +75,7 @@ const GuestManager: React.FC<GuestManagerProps> = ({ albumId }) => {
   const handleDeleteGuest = async (guestId: string) => {
     setLoadingGuests(prev => ({ ...prev, [guestId]: true }));
     try {
-      const { error } = await supabaseService.deleteGuest(guestId);
+      const { error } = await guestService.deleteGuest(guestId);
       if (error) throw error;
       
       loadGuests();
@@ -98,7 +98,7 @@ const GuestManager: React.FC<GuestManagerProps> = ({ albumId }) => {
   const handleApproveGuest = async (guestId: string) => {
     setLoadingGuests(prev => ({ ...prev, [guestId]: true }));
     try {
-      const { error } = await supabaseService.approveGuest(guestId);
+      const { error } = await guestService.approveGuest(guestId);
       if (error) throw error;
       
       loadGuests();

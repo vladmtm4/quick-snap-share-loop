@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { supabaseService } from '@/lib/supabase-service';
+import { guestService } from '@/lib/guest-service';
 import { useLanguage } from '@/lib/i18n';
 import { Guest } from '@/types';
 
@@ -30,7 +31,7 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
     const fetchGuests = async () => {
       try {
         setLoading(true);
-        const { data, error } = await supabaseService.getAllGuestsForAlbum(albumId);
+        const { data, error } = await guestService.getAllGuestsForAlbum(albumId);
         
         if (error) {
           throw new Error(error.message);
