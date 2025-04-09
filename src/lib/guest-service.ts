@@ -3,6 +3,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 import { Guest, GuestResponse, SingleGuestResponse } from "@/types";
 
+// Define a more specific type for the database response to include photo_url
+type GuestDatabaseResponse = {
+  id: string;
+  albumid: string;
+  guestname: string;
+  email: string | null;
+  phone: string | null;
+  approved: boolean | null;
+  created_at: string | null;
+  assigned: boolean | null;
+  photo_url: string | null;
+};
+
 // Guest service using raw queries to avoid type errors
 export const guestService = {
   async getAllGuestsForAlbum(albumId: string): Promise<GuestResponse> {
@@ -21,7 +34,7 @@ export const guestService = {
       }
       
       // Map the DB response to our Guest type
-      const guests: Guest[] = (data || []).map((item: any) => ({
+      const guests: Guest[] = (data || []).map((item: GuestDatabaseResponse) => ({
         id: item.id,
         albumId: item.albumid,
         guestName: item.guestname,
@@ -191,7 +204,7 @@ export const guestService = {
       
       const { data, error } = await supabase
         .from('guests')
-        .insert(newGuest as any) // Using 'as any' to bypass type checking
+        .insert(newGuest)
         .select()
         .single();
       
