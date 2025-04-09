@@ -31,6 +31,15 @@ const Slideshow: React.FC<SlideshowProps> = ({
     setCurrentIndex((prevIndex) => (prevIndex + 1) % photos.length);
   }, [photos.length]);
   
+  // When photos array changes (new photos added), update the slideshow accordingly
+  useEffect(() => {
+    // If we're at the end of the slides and new photos are added, we can continue with new photos
+    if (currentIndex >= photos.length && photos.length > 0) {
+      setCurrentIndex(0);
+    }
+    console.log(`Slideshow photos updated: ${photos.length} photos available`);
+  }, [photos, currentIndex]);
+  
   // Handle auto-advancing slides when playing
   useEffect(() => {
     if (isPlaying && photos.length > 0) {

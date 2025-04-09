@@ -69,7 +69,29 @@ const SlideshowPage: React.FC = () => {
         }, 
         (payload) => {
           console.log("Real-time photo update detected:", payload);
-          loadPhotos(); // Reload all photos when any change is detected
+          
+          // For insertions or updates with approved=true, add them to the current photos
+          if ((payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') && 
+              payload.new && payload.new.approved) {
+            
+            // Check if this is a new photo or an update to an existing one
+            if (payload.eventType === 'INSERT') {
+              console.log("New photo detected, adding to slideshow:", payload.new);
+              setPhotos(currentPhotos => [...currentPhotos, payload.new as Photo]);
+            } else {
+              // For updates, replace the existing photo
+              setPhotos(currentPhotos => 
+                currentPhotos.map(photo => 
+                  photo.id === payload.new.id ? payload.new as Photo : photo
+                )
+              );
+            }
+          } else if (payload.eventType === 'DELETE') {
+            // Remove deleted photos
+            setPhotos(currentPhotos => 
+              currentPhotos.filter(photo => photo.id !== payload.old.id)
+            );
+          }
         }
       )
       .subscribe();
