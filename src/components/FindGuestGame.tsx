@@ -6,68 +6,114 @@ import { useToast } from "@/components/ui/use-toast";
 import { Camera, User, CheckCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useLanguage } from "@/lib/i18n";
 
 interface FindGuestGameProps {
   albumId: string;
 }
 
+interface GuestPhoto {
+  id: string;
+  name: string;
+  photoUrl: string;
+  thumbnailUrl: string;
+}
+
 const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId }) => {
-  const [assignment, setAssignment] = useState<string | null>(null);
+  const [guestPhoto, setGuestPhoto] = useState<GuestPhoto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [gameComplete, setGameComplete] = useState(false);
+  const [playerName, setPlayerName] = useState<string>("");
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { translate, language } = useLanguage();
 
-  // Generate a random guest assignment on component mount
+  // Generate a unique identifier for this player if not exists
   useEffect(() => {
-    async function loadGuestNames() {
+    const storedName = localStorage.getItem("playerName");
+    if (storedName) {
+      setPlayerName(storedName);
+    } else {
+      const newName = `Player_${Math.floor(Math.random() * 10000)}`;
+      localStorage.setItem("playerName", newName);
+      setPlayerName(newName);
+    }
+  }, []);
+
+  // Find an unassigned guest photo
+  useEffect(() => {
+    async function assignGuestPhoto() {
       try {
         setIsLoading(true);
         
-        // Fetch guest names from album metadata
+        // Try to get an unassigned guest photo
         const { data, error } = await supabase
-          .from('albums')
-          .select('guest_list')
-          .eq('id', albumId)
-          .single();
+          .from('photos')
+          .select('*')
+          .eq('album_id', albumId)
+          .eq('metadata->isGuest', true)
+          .eq('game_assigned', false)
+          .limit(1);
         
         if (error) {
-          console.error("Error loading guest list:", error);
+          console.error("Error loading guest photos:", error);
           toast({
             title: "Couldn't load the game",
             description: "Please try again later",
             variant: "destructive"
           });
-          setAssignment("Someone special");
           return;
         }
         
-        // If we have guest names in the metadata, pick a random one
-        const guestList = data?.guest_list;
-        if (guestList && Array.isArray(guestList) && guestList.length > 0) {
-          const randomIndex = Math.floor(Math.random() * guestList.length);
-          setAssignment(guestList[randomIndex]);
+        // If we found an unassigned guest photo
+        if (data && data.length > 0) {
+          const photo = data[0];
+          
+          // Mark this photo as assigned to this player
+          await supabase
+            .from('photos')
+            .update({ 
+              game_assigned: true,
+              assigned_to: playerName
+            })
+            .eq('id', photo.id);
+          
+          // Set the guest photo for the challenge
+          setGuestPhoto({
+            id: photo.id,
+            name: photo.metadata?.guestName || "Guest",
+            photoUrl: photo.url,
+            thumbnailUrl: photo.thumbnail_url
+          });
         } else {
-          // Default assignment if no guest list is available
-          setAssignment("Someone special");
+          // All photos are assigned, show a message
+          toast({
+            title: "All guests are assigned",
+            description: "No more guests available for the game",
+            variant: "destructive"
+          });
+          setGameComplete(true);
         }
       } catch (error) {
         console.error("Error in game setup:", error);
-        setAssignment("Someone special");
       } finally {
         setIsLoading(false);
       }
     }
 
-    loadGuestNames();
-  }, [albumId, toast]);
+    if (playerName) {
+      assignGuestPhoto();
+    }
+  }, [albumId, toast, playerName]);
 
   const handleTakePhoto = () => {
     // Navigate to the upload page with special game parameter
-    navigate(`/upload/${albumId}?gameMode=true&assignment=${encodeURIComponent(assignment || '')}`);
+    if (guestPhoto) {
+      navigate(`/upload/${albumId}?gameMode=true&assignment=${encodeURIComponent(guestPhoto.name)}`);
+    }
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     setGameComplete(true);
     toast({
       title: "Mission accomplished!",
@@ -76,53 +122,59 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId }) => {
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto animate-fade-in">
+    <Card className={`w-full max-w-md mx-auto animate-fade-in ${language === 'he' ? 'text-right' : ''}`}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-center text-xl">Wedding Photo Challenge</CardTitle>
+        <CardTitle className="text-center text-xl">{translate("photoGame")}</CardTitle>
       </CardHeader>
       
       <CardContent className="flex flex-col items-center space-y-6 text-center p-6">
         {isLoading ? (
-          <p>Finding your photo mission...</p>
+          <p>{translate("loading")}</p>
         ) : gameComplete ? (
           <div className="text-center space-y-4">
             <div className="bg-green-100 p-4 rounded-full mx-auto w-20 h-20 flex items-center justify-center">
               <CheckCheck className="h-10 w-10 text-green-600" />
             </div>
-            <p className="text-lg font-medium">Challenge completed!</p>
+            <p className="text-lg font-medium">{translate("challengeComplete")}</p>
             <p className="text-muted-foreground">
-              Thanks for participating in the wedding photo game!
+              {translate("thanksForParticipating")}
             </p>
           </div>
-        ) : (
+        ) : guestPhoto ? (
           <>
-            <div className="bg-blue-100 p-4 rounded-full mx-auto w-20 h-20 flex items-center justify-center">
-              <User className="h-10 w-10 text-blue-600" />
+            <div className="bg-gray-200 p-2 rounded-full mx-auto w-32 h-32 flex items-center justify-center overflow-hidden">
+              <img 
+                src={guestPhoto.photoUrl} 
+                alt={guestPhoto.name}
+                className="h-full w-full object-cover rounded-full"
+              />
             </div>
             
             <div className="space-y-2">
-              <p className="text-lg font-medium">Your mission (should you choose to accept it):</p>
+              <p className="text-lg font-medium">{translate("youMission")}</p>
               <p className="text-2xl font-bold text-brand-blue">
-                Find {assignment}
+                {translate("guestChallenge")} {guestPhoto.name}
               </p>
               <p className="text-muted-foreground">
-                Take the coolest photo you can with them and upload it!
+                {translate("takePhotoWithGuest")}
               </p>
             </div>
           </>
+        ) : (
+          <p>{translate("noGuestsFound")}</p>
         )}
       </CardContent>
       
       <CardFooter className="flex flex-col gap-3 pt-2">
-        {!gameComplete && (
+        {!gameComplete && guestPhoto && (
           <>
             <Button 
               className="w-full bg-brand-blue hover:bg-brand-darkBlue gap-2"
               onClick={handleTakePhoto}
-              disabled={isLoading}
+              disabled={isLoading || !guestPhoto}
             >
               <Camera className="h-4 w-4" />
-              Take Photo
+              {translate("takePhoto")}
             </Button>
             
             <Button
@@ -131,7 +183,7 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId }) => {
               onClick={handleComplete}
               disabled={isLoading}
             >
-              Mark as Completed
+              {translate("markComplete")}
             </Button>
           </>
         )}
@@ -141,7 +193,7 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId }) => {
           className="w-full"
           onClick={() => navigate(`/album/${albumId}`)}
         >
-          Return to Album
+          {translate("returnToAlbum")}
         </Button>
       </CardFooter>
     </Card>

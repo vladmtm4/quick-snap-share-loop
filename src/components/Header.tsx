@@ -3,12 +3,16 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Home } from "lucide-react";
+import LanguageSelector from "./LanguageSelector";
+import { useLanguage } from "@/lib/i18n";
 
 interface HeaderProps {
   showBackButton?: boolean;
 }
 
 const Header: React.FC<HeaderProps> = ({ showBackButton = false }) => {
+  const { translate } = useLanguage();
+
   return (
     <header className="flex items-center justify-between p-4 bg-white shadow-sm">
       <div className="flex items-center">
@@ -20,10 +24,11 @@ const Header: React.FC<HeaderProps> = ({ showBackButton = false }) => {
           </Button>
         ) : (
           <Link to="/" className="text-xl font-bold text-brand-blue">
-            QuickSnap
+            {translate("appName")}
           </Link>
         )}
       </div>
+      <LanguageSelector />
     </header>
   );
 };

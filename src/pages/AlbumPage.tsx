@@ -1,26 +1,34 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import Header from "@/components/Header";
-import AlbumQRCode from "@/components/AlbumQRCode";
-import ModerationPanel from "@/components/ModerationPanel";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/components/ui/use-toast";
-import { supabaseService } from "@/lib/supabase-service";
+import { 
+  Camera, 
+  Upload, 
+  Play, 
+  QrCode, 
+  Settings, 
+  Users,
+  Trophy 
+} from "lucide-react";
+import Header from "@/components/Header";
 import { Album, Photo } from "@/types";
-import { Images, QrCode, Share } from "lucide-react";
+import { supabaseService } from "@/lib/supabase-service";
+import { useLanguage } from "@/lib/i18n";
 
 const AlbumPage: React.FC = () => {
   const { albumId } = useParams<{ albumId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { translate } = useLanguage();
   
   const [album, setAlbum] = useState<Album | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [pendingPhotos, setPendingPhotos] = useState<Photo[]>([]);
   const [activeTab, setActiveTab] = useState("gallery");
   const [loading, setLoading] = useState(true);
+  const [moderationOpen, setModerationOpen] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   
   useEffect(() => {
     if (!albumId) {
@@ -36,7 +44,6 @@ const AlbumPage: React.FC = () => {
     async function loadAlbumData() {
       setLoading(true);
       try {
-        // Get album data
         const albumData = await supabaseService.getAlbumById(albumId);
         console.log("Album data:", albumData);
         
@@ -53,7 +60,6 @@ const AlbumPage: React.FC = () => {
         
         setAlbum(albumData);
         
-        // Load photos
         await loadPhotos();
       } catch (error) {
         console.error("Error loading album:", error);
@@ -91,6 +97,18 @@ const AlbumPage: React.FC = () => {
     loadPhotos();
   };
   
+  const handleShowQRCode = () => {
+    setShowQRCode(true);
+  };
+  
+  const handleOpenModeration = () => {
+    setModerationOpen(true);
+  };
+  
+  const handlePhotoClick = (photo: Photo) => {
+    setSelectedPhoto(photo);
+  };
+  
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -111,80 +129,158 @@ const AlbumPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <Header showBackButton />
       
-      <div className="container max-w-3xl py-8 px-4">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold mb-2">{album.title}</h1>
-          {album.description && (
-            <p className="text-gray-600">{album.description}</p>
+      <div className="container max-w-4xl py-6 px-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">{album.title}</h1>
+            {album.description && (
+              <p className="text-gray-500 mt-1">{album.description}</p>
+            )}
+          </div>
+          
+          <div className="flex flex-wrap gap-2">
+            <Button asChild className="gap-1">
+              <Link to={`/upload/${album.id}`}>
+                <Upload className="h-4 w-4" /> 
+                {translate("uploadPhotos")}
+              </Link>
+            </Button>
+            
+            <Button variant="outline" asChild className="gap-1">
+              <Link to={`/slideshow/${album.id}`}>
+                <Play className="h-4 w-4" /> 
+                {translate("slideshow")}
+              </Link>
+            </Button>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+          <Button 
+            variant="outline" 
+            size="lg"
+            className="flex flex-col items-center justify-center h-24 gap-2"
+            asChild
+          >
+            <Link to={`/game/${album.id}`}>
+              <Trophy className="h-6 w-6 text-yellow-500" />
+              <span>{translate("photoGame")}</span>
+            </Link>
+          </Button>
+
+          <Button 
+            variant="outline" 
+            size="lg"
+            className="flex flex-col items-center justify-center h-24 gap-2"
+            asChild
+          >
+            <Link to={`/guests/${album.id}`}>
+              <Users className="h-6 w-6 text-blue-500" />
+              <span>{translate("guestManagement")}</span>
+            </Link>
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="lg"
+            className="flex flex-col items-center justify-center h-24 gap-2"
+            onClick={handleShowQRCode}
+          >
+            <QrCode className="h-6 w-6 text-purple-500" />
+            <span>{translate("shareQR")}</span>
+          </Button>
+          
+          {album.moderationEnabled && (
+            <Button 
+              variant="outline" 
+              size="lg"
+              className="flex flex-col items-center justify-center h-24 gap-2"
+              onClick={handleOpenModeration}
+            >
+              <Settings className="h-6 w-6 text-gray-500" />
+              <span>{translate("moderation")}</span>
+            </Button>
           )}
         </div>
         
-        <div className="flex flex-wrap items-center gap-2 mb-6">
-          <Button 
-            onClick={() => navigate(`/slideshow/${album.id}`)}
-            className="bg-brand-blue hover:bg-brand-darkBlue"
-            disabled={photos.length === 0}
-          >
-            <Images className="mr-2 h-4 w-4" />
-            View Slideshow
-          </Button>
-          
-          <Button 
-            onClick={() => navigate(`/upload/${album.id}`)}
-            variant="outline"
-          >
-            <Share className="mr-2 h-4 w-4" />
-            Upload Page
-          </Button>
-        </div>
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="gallery">Gallery</TabsTrigger>
-            <TabsTrigger value="share">Share Album</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="gallery" className="space-y-6 mt-4">
-            {album.moderationEnabled && pendingPhotos.length > 0 && (
-              <ModerationPanel 
-                albumId={album.id}
-                pendingPhotos={pendingPhotos}
-                onPhotoApproved={handlePhotoModerated}
-              />
-            )}
-            
-            {photos.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {photos.map((photo) => (
-                  <div
-                    key={photo.id}
-                    className="aspect-square bg-black rounded-lg overflow-hidden"
-                  >
-                    <img
-                      src={photo.thumbnailUrl}
-                      alt="Album"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ))}
+        {isLoading ? (
+          <div className="text-center py-10">
+            <p>{translate("loading")}</p>
+          </div>
+        ) : photos.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-10 text-center">
+            <Camera className="h-10 w-10 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-lg font-medium mb-2">
+              {translate("noPhotosYet")}
+            </h2>
+            <p className="text-gray-500 mb-4">
+              {translate("beTheFirst")}
+            </p>
+            <Button asChild>
+              <Link to={`/upload/${album.id}`}>
+                <Upload className="h-4 w-4 mr-2" />
+                {translate("uploadPhotos")}
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {photos.map(photo => (
+              <div 
+                key={photo.id} 
+                className="aspect-square bg-gray-200 rounded-lg overflow-hidden cursor-pointer"
+                onClick={() => handlePhotoClick(photo)}
+              >
+                <img 
+                  src={photo.thumbnailUrl} 
+                  alt="Album photo" 
+                  className="w-full h-full object-cover"
+                />
               </div>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-gray-500 mb-4">No photos in this album yet.</p>
-                <Button 
-                  onClick={() => navigate(`/upload/${album.id}`)}
-                  className="bg-brand-blue hover:bg-brand-darkBlue"
-                >
-                  Add Photos
+            ))}
+          </div>
+        )}
+        
+        {moderationOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-auto">
+              <div className="p-4 border-b sticky top-0 bg-white flex justify-between items-center">
+                <h2 className="text-lg font-bold">{translate("moderation")}</h2>
+                <Button variant="ghost" size="icon" onClick={() => setModerationOpen(false)}>
+                  <X className="h-5 w-5" />
                 </Button>
               </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="share" className="mt-4">
-            <AlbumQRCode albumId={album.id} title={album.title} />
-          </TabsContent>
-        </Tabs>
+              <ModerationPanel albumId={album.id} onClose={() => setModerationOpen(false)} />
+            </div>
+          </div>
+        )}
+        
+        {showQRCode && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg w-full max-w-sm text-center p-6">
+              <h2 className="text-lg font-bold mb-4">{translate("scanToJoin")}</h2>
+              <div className="mb-4">
+                <AlbumQRCode albumId={album.id} size={200} />
+              </div>
+              <Button onClick={() => setShowQRCode(false)}>
+                {translate("close")}
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        {selectedPhoto && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
+            onClick={() => setSelectedPhoto(null)}
+          >
+            <img 
+              src={selectedPhoto.url} 
+              alt="Full size" 
+              className="max-w-full max-h-[90vh] object-contain"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

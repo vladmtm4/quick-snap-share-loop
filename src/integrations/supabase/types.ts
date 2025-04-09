@@ -46,7 +46,9 @@ export type Database = {
         Row: {
           album_id: string
           approved: boolean | null
+          assigned_to: string | null
           created_at: string | null
+          game_assigned: boolean | null
           id: string
           metadata: Json | null
           thumbnail_url: string
@@ -55,7 +57,9 @@ export type Database = {
         Insert: {
           album_id: string
           approved?: boolean | null
+          assigned_to?: string | null
           created_at?: string | null
+          game_assigned?: boolean | null
           id?: string
           metadata?: Json | null
           thumbnail_url: string
@@ -64,7 +68,9 @@ export type Database = {
         Update: {
           album_id?: string
           approved?: boolean | null
+          assigned_to?: string | null
           created_at?: string | null
+          game_assigned?: boolean | null
           id?: string
           metadata?: Json | null
           thumbnail_url?: string
