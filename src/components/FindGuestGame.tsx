@@ -85,7 +85,7 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
         
         toast({
           title: "Welcome Back!",
-          description: `You are assigned to find ${assignedGuest.guestName}!`,
+          description: `Your challenge: Find ${assignedGuest.guestName}!`,
         });
       } else {
         setGuestAssigned(false);
@@ -131,8 +131,8 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
         setGuestAssigned(true);
         
         toast({
-          title: "New Guest Assigned",
-          description: `You have been assigned ${guest.guestName}!`,
+          title: "Challenge Assigned!",
+          description: `Find ${guest.guestName} and take a photo together!`,
         });
       } else {
         toast({
@@ -182,12 +182,12 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
     await getOrAssignRandomGuest(false, true);
   };
   
-  const handleThisIsMe = async () => {
+  const handleAcceptChallenge = async () => {
     setGuestAssigned(true);
     // This will confirm the current guest assignment
     toast({
-      title: "Confirmed!",
-      description: `You are assigned to find ${randomGuest?.guestName}. Good luck!`,
+      title: "Challenge Accepted!",
+      description: `Find ${randomGuest?.guestName} and take an awesome photo together!`,
     });
   };
   
@@ -203,8 +203,8 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
       await getOrAssignRandomGuest(false);
     } else {
       toast({
-        title: "Guest Already Assigned",
-        description: "You already have a guest assigned. Click 'This is me' to confirm or 'This isn't me' to get a new guest.",
+        title: "Challenge Already Assigned",
+        description: "You already have a guest to find. Click 'Accept Challenge' to confirm or 'Change Guest' to get a different guest.",
       });
     }
   };
@@ -241,12 +241,12 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
           <Card>
             <CardHeader>
               <CardTitle>Score: {score}</CardTitle>
-              <CardDescription>Find this guest in the event:</CardDescription>
+              <CardDescription>Your photo challenge:</CardDescription>
             </CardHeader>
             <CardContent>
               {!guestAssigned ? (
                 <div className="text-center">
-                  <h3 className="text-2xl font-bold mb-6">Click here to get your guest!</h3>
+                  <h3 className="text-2xl font-bold mb-6">Get your photo challenge!</h3>
                   <Button 
                     onClick={handleClickHere}
                     className="bg-brand-blue hover:bg-brand-darkBlue py-6 px-8 text-lg"
@@ -257,7 +257,7 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
                 </div>
               ) : randomGuest ? (
                 <div className="text-center">
-                  <h3 className="text-2xl font-bold mb-4">{randomGuest.guestName}</h3>
+                  <h3 className="text-2xl font-bold mb-4">Find {randomGuest.guestName}</h3>
                   
                   {randomGuest.photoUrl ? (
                     <div className="mb-4 flex justify-center">
@@ -281,15 +281,15 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
                       className="sm:flex-1"
                     >
                       <UserRound className="mr-2 h-4 w-4" />
-                      {changingGuest ? "Changing..." : "This isn't me"}
+                      {changingGuest ? "Changing..." : "Change Guest"}
                     </Button>
                     
                     <Button
-                      onClick={handleThisIsMe}
+                      onClick={handleAcceptChallenge}
                       className="bg-green-600 hover:bg-green-700 sm:flex-1"
                     >
                       <Check className="mr-2 h-4 w-4" />
-                      This is me
+                      Accept Challenge
                     </Button>
                     
                     <Button 
