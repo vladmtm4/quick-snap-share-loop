@@ -2,7 +2,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Home } from "lucide-react";
+import { Home, X } from "lucide-react";
 import LanguageSelector from "./LanguageSelector";
 import { useLanguage } from "@/lib/i18n";
 

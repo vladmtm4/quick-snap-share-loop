@@ -1,202 +1,168 @@
 
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
-import { Camera, User, CheckCheck } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useLanguage } from "@/lib/i18n";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { supabaseService } from '@/lib/supabase-service';
+import { useLanguage } from '@/lib/i18n';
+
+// Define a Guest type to ensure proper typings
+interface Guest {
+  id: string;
+  albumId: string;
+  guestName: string;
+  email?: string;
+  phone?: string;
+  approved?: boolean;
+}
 
 interface FindGuestGameProps {
   albumId: string;
+  onClose: () => void;
 }
 
-interface GuestPhoto {
-  id: string;
-  name: string;
-  photoUrl: string;
-  thumbnailUrl: string;
-}
-
-const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId }) => {
-  const [guestPhoto, setGuestPhoto] = useState<GuestPhoto | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [gameComplete, setGameComplete] = useState(false);
-  const [playerName, setPlayerName] = useState<string>("");
-  const { toast } = useToast();
+const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   const navigate = useNavigate();
-  const { translate, language } = useLanguage();
-
-  // Generate a unique identifier for this player if not exists
+  const { translate } = useLanguage();
+  
+  const [guestData, setGuestData] = useState<Guest[]>([]);
+  const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
+  const [allFoundGuests, setAllFoundGuests] = useState<Record<string, boolean>>({});
+  const [gameMode, setGameMode] = useState<'find' | 'list'>('find');
+  const [randomGuest, setRandomGuest] = useState<Guest | null>(null);
+  const [score, setScore] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  
   useEffect(() => {
-    const storedName = localStorage.getItem("playerName");
-    if (storedName) {
-      setPlayerName(storedName);
-    } else {
-      const newName = `Player_${Math.floor(Math.random() * 10000)}`;
-      localStorage.setItem("playerName", newName);
-      setPlayerName(newName);
-    }
-  }, []);
-
-  // Find an unassigned guest photo
-  useEffect(() => {
-    async function assignGuestPhoto() {
+    const fetchGuests = async () => {
       try {
-        setIsLoading(true);
-        
-        // Try to get an unassigned guest photo
-        const { data, error } = await supabase
-          .from('photos')
-          .select('*')
-          .eq('album_id', albumId)
-          .eq('metadata->isGuest', true)
-          .eq('game_assigned', false)
-          .limit(1);
+        setLoading(true);
+        const { data, error } = await supabaseService.getAllGuestsForAlbum(albumId);
         
         if (error) {
-          console.error("Error loading guest photos:", error);
-          toast({
-            title: "Couldn't load the game",
-            description: "Please try again later",
-            variant: "destructive"
-          });
-          return;
+          throw new Error(error.message);
         }
         
-        // If we found an unassigned guest photo
-        if (data && data.length > 0) {
-          const photo = data[0];
-          
-          // Mark this photo as assigned to this player
-          await supabase
-            .from('photos')
-            .update({ 
-              game_assigned: true,
-              assigned_to: playerName
-            })
-            .eq('id', photo.id);
-          
-          // Set the guest photo for the challenge
-          setGuestPhoto({
-            id: photo.id,
-            name: photo.metadata?.guestName || "Guest",
-            photoUrl: photo.url,
-            thumbnailUrl: photo.thumbnail_url
-          });
-        } else {
-          // All photos are assigned, show a message
-          toast({
-            title: "All guests are assigned",
-            description: "No more guests available for the game",
-            variant: "destructive"
-          });
-          setGameComplete(true);
-        }
-      } catch (error) {
-        console.error("Error in game setup:", error);
+        // Convert data to proper Guest type
+        const guestsList: Guest[] = data.map((item: any) => ({
+          id: item.id,
+          albumId: item.albumId,
+          guestName: item.guestName || '',
+          email: item.email || '',
+          phone: item.phone || '',
+          approved: item.approved
+        }));
+        
+        setGuestData(guestsList);
+        pickRandomGuest(guestsList);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load guests');
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
+    };
+    
+    fetchGuests();
+  }, [albumId]);
+  
+  const pickRandomGuest = (guests: Guest[]) => {
+    if (guests.length === 0) return;
+    
+    const approvedGuests = guests.filter(guest => guest.approved !== false);
+    if (approvedGuests.length === 0) {
+      setRandomGuest(null);
+      return;
     }
-
-    if (playerName) {
-      assignGuestPhoto();
-    }
-  }, [albumId, toast, playerName]);
-
-  const handleTakePhoto = () => {
-    // Navigate to the upload page with special game parameter
-    if (guestPhoto) {
-      navigate(`/upload/${albumId}?gameMode=true&assignment=${encodeURIComponent(guestPhoto.name)}`);
+    
+    // Filter out already found guests if possible
+    const notFoundGuests = approvedGuests.filter(g => !allFoundGuests[g.id]);
+    
+    if (notFoundGuests.length === 0) {
+      // All guests have been found, reset or end game
+      setAllFoundGuests({});
+      setRandomGuest(approvedGuests[Math.floor(Math.random() * approvedGuests.length)]);
+    } else {
+      setRandomGuest(notFoundGuests[Math.floor(Math.random() * notFoundGuests.length)]);
     }
   };
-
-  const handleComplete = async () => {
-    setGameComplete(true);
-    toast({
-      title: "Mission accomplished!",
-      description: "You've completed the challenge!",
-    });
+  
+  const handleGuestSelected = (guest: Guest) => {
+    setSelectedGuest(guest);
+    
+    if (randomGuest && guest.id === randomGuest.id) {
+      // Correct guess
+      const newFoundGuests = { ...allFoundGuests, [guest.id]: true };
+      setAllFoundGuests(newFoundGuests);
+      setScore(score + 1);
+      
+      // Pick next guest
+      pickRandomGuest(guestData);
+    }
   };
-
+  
+  const handleResetGame = () => {
+    setAllFoundGuests({});
+    setScore(0);
+    pickRandomGuest(guestData);
+  };
+  
   return (
-    <Card className={`w-full max-w-md mx-auto animate-fade-in ${language === 'he' ? 'text-right' : ''}`}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-center text-xl">{translate("photoGame")}</CardTitle>
-      </CardHeader>
-      
-      <CardContent className="flex flex-col items-center space-y-6 text-center p-6">
-        {isLoading ? (
-          <p>{translate("loading")}</p>
-        ) : gameComplete ? (
-          <div className="text-center space-y-4">
-            <div className="bg-green-100 p-4 rounded-full mx-auto w-20 h-20 flex items-center justify-center">
-              <CheckCheck className="h-10 w-10 text-green-600" />
-            </div>
-            <p className="text-lg font-medium">{translate("challengeComplete")}</p>
-            <p className="text-muted-foreground">
-              {translate("thanksForParticipating")}
-            </p>
-          </div>
-        ) : guestPhoto ? (
-          <>
-            <div className="bg-gray-200 p-2 rounded-full mx-auto w-32 h-32 flex items-center justify-center overflow-hidden">
-              <img 
-                src={guestPhoto.photoUrl} 
-                alt={guestPhoto.name}
-                className="h-full w-full object-cover rounded-full"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <p className="text-lg font-medium">{translate("youMission")}</p>
-              <p className="text-2xl font-bold text-brand-blue">
-                {translate("guestChallenge")} {guestPhoto.name}
-              </p>
-              <p className="text-muted-foreground">
-                {translate("takePhotoWithGuest")}
-              </p>
-            </div>
-          </>
-        ) : (
-          <p>{translate("noGuestsFound")}</p>
-        )}
-      </CardContent>
-      
-      <CardFooter className="flex flex-col gap-3 pt-2">
-        {!gameComplete && guestPhoto && (
-          <>
-            <Button 
-              className="w-full bg-brand-blue hover:bg-brand-darkBlue gap-2"
-              onClick={handleTakePhoto}
-              disabled={isLoading || !guestPhoto}
-            >
-              <Camera className="h-4 w-4" />
-              {translate("takePhoto")}
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleComplete}
-              disabled={isLoading}
-            >
-              {translate("markComplete")}
-            </Button>
-          </>
-        )}
+    <div className="space-y-4">
+      <Tabs defaultValue="find" onValueChange={(value) => setGameMode(value as 'find' | 'list')}>
+        <TabsList className="w-full">
+          <TabsTrigger value="find" className="flex-1">Find a Guest</TabsTrigger>
+          <TabsTrigger value="list" className="flex-1">Guest List</TabsTrigger>
+        </TabsList>
         
-        <Button 
-          variant="ghost"
-          className="w-full"
-          onClick={() => navigate(`/album/${albumId}`)}
-        >
-          {translate("returnToAlbum")}
-        </Button>
-      </CardFooter>
-    </Card>
+        <TabsContent value="find" className="space-y-4 pt-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Score: {score}</CardTitle>
+              <CardDescription>Find this guest in the event:</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {randomGuest ? (
+                <div className="text-center">
+                  <h3 className="text-2xl font-bold mb-4">{randomGuest.guestName}</h3>
+                  <Button onClick={handleResetGame} variant="outline">Reset Game</Button>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <p>No guests available for the game.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="list">
+          <div className="grid gap-2">
+            {guestData.filter(g => g.approved !== false).map(guest => (
+              <Button 
+                key={guest.id}
+                variant={selectedGuest?.id === guest.id ? "default" : "outline"}
+                className="justify-between w-full"
+                onClick={() => handleGuestSelected(guest)}
+              >
+                <span>{guest.guestName}</span>
+                {allFoundGuests[guest.id] && <Badge>Found</Badge>}
+              </Button>
+            ))}
+            
+            {guestData.length === 0 && !loading && (
+              <p className="text-center py-4 text-muted-foreground">No guests in this album yet</p>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
+      
+      <div className="flex justify-between">
+        <Button variant="ghost" onClick={onClose}>Close</Button>
+      </div>
+    </div>
   );
 };
 

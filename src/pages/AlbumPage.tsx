@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,12 +9,16 @@ import {
   QrCode, 
   Settings, 
   Users,
-  Trophy 
+  Trophy,
+  X 
 } from "lucide-react";
 import Header from "@/components/Header";
 import { Album, Photo } from "@/types";
 import { supabaseService } from "@/lib/supabase-service";
 import { useLanguage } from "@/lib/i18n";
+import { useToast } from "@/hooks/use-toast";
+import AlbumQRCode from "@/components/AlbumQRCode";
+import ModerationPanel from "@/components/ModerationPanel";
 
 const AlbumPage: React.FC = () => {
   const { albumId } = useParams<{ albumId: string }>();
@@ -203,7 +208,7 @@ const AlbumPage: React.FC = () => {
           )}
         </div>
         
-        {isLoading ? (
+        {loading ? (
           <div className="text-center py-10">
             <p>{translate("loading")}</p>
           </div>
