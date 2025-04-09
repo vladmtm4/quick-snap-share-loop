@@ -1,11 +1,12 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Upload, Image as ImageIcon } from "lucide-react";
+import { Upload, Image as ImageIcon, Trophy } from "lucide-react";
 import { supabaseService } from "@/lib/supabase-service";
 import { Album } from "@/types";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
 interface PhotoUploaderProps {
   album: Album;
@@ -17,6 +18,11 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  
+  const isGameMode = searchParams.get('gameMode') === 'true';
+  const guestAssignment = searchParams.get('assignment');
   
   const handleFileSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -69,7 +75,8 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
         albumId: album.id,
         url: storageResult.url,
         thumbnailUrl: storageResult.thumbnailUrl,
-        approved: !album.moderationEnabled // Auto-approve if moderation is disabled
+        approved: !album.moderationEnabled, // Auto-approve if moderation is disabled
+        metadata: isGameMode ? { gameChallenge: true, assignment: guestAssignment } : undefined
       });
       
       if (!result.success) {
@@ -78,9 +85,11 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
       
       toast({
         title: "Success",
-        description: album.moderationEnabled
-          ? "Photo uploaded and will appear after review"
-          : "Photo uploaded successfully!"
+        description: isGameMode
+          ? "Challenge photo uploaded successfully!"
+          : album.moderationEnabled
+            ? "Photo uploaded and will appear after review"
+            : "Photo uploaded successfully!"
       });
       
       setPreviewUrl(null);
@@ -88,6 +97,13 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
       
       if (onUploadComplete) {
         onUploadComplete();
+      }
+      
+      // If in game mode, navigate back to game page after successful upload
+      if (isGameMode) {
+        setTimeout(() => {
+          navigate(`/game/${album.id}`);
+        }, 1500);
       }
     } catch (error) {
       console.error("Upload error:", error);
@@ -109,6 +125,15 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
   return (
     <Card className="w-full animate-fade-in">
       <CardContent className="p-6">
+        {isGameMode && (
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-100 rounded-md flex items-center gap-2">
+            <Trophy className="text-yellow-500 h-5 w-5 flex-shrink-0" />
+            <p className="text-sm">
+              <span className="font-medium">Photo Challenge:</span> Take a cool picture with {guestAssignment}!
+            </p>
+          </div>
+        )}
+        
         {!previewUrl ? (
           <div className="flex flex-col items-center">
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 w-full flex flex-col items-center justify-center cursor-pointer hover:border-brand-blue transition-colors">

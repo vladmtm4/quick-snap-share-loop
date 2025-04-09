@@ -9,6 +9,7 @@ import HomePage from "./pages/HomePage";
 import AlbumPage from "./pages/AlbumPage";
 import UploadPage from "./pages/UploadPage";
 import SlideshowPage from "./pages/SlideshowPage";
+import GamePage from "./pages/GamePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/album/:albumId" element={<AlbumPage />} />
           <Route path="/upload/:albumId" element={<UploadPage />} />
           <Route path="/slideshow/:albumId" element={<SlideshowPage />} />
+          <Route path="/game/:albumId" element={<GamePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

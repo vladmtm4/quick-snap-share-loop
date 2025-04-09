@@ -7,6 +7,7 @@ export interface Album {
   moderationEnabled: boolean;
   isPrivate: boolean;
   ownerId?: string;
+  guest_list?: string[]; // For the find-a-guest game
 }
 
 export interface Photo {
@@ -16,6 +17,11 @@ export interface Photo {
   thumbnailUrl: string;
   createdAt: string;
   approved: boolean;
+  metadata?: {
+    gameChallenge?: boolean;
+    assignment?: string;
+    [key: string]: any;
+  };
 }
 
 export interface UploadResponse {

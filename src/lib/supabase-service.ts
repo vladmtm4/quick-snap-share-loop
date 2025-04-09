@@ -30,7 +30,8 @@ export const supabaseService = {
       createdAt: album.created_at || '',
       moderationEnabled: album.moderation_enabled || false,
       isPrivate: album.is_private || false,
-      ownerId: album.owner_id || undefined
+      ownerId: album.owner_id || undefined,
+      guest_list: album.guest_list || undefined
     }));
   },
   
@@ -39,6 +40,7 @@ export const supabaseService = {
     description?: string;
     isPrivate?: boolean;
     moderationEnabled?: boolean;
+    guest_list?: string[];
   }): Promise<Album> {
     console.log("Creating album with data:", albumData);
     
@@ -48,6 +50,7 @@ export const supabaseService = {
       description: albumData.description || null,
       is_private: albumData.isPrivate || false,
       moderation_enabled: albumData.moderationEnabled || false,
+      guest_list: albumData.guest_list || null,
       created_at: new Date().toISOString()
     };
     
@@ -78,7 +81,8 @@ export const supabaseService = {
       createdAt: data.created_at || '',
       moderationEnabled: data.moderation_enabled || false,
       isPrivate: data.is_private || false,
-      ownerId: data.owner_id || undefined
+      ownerId: data.owner_id || undefined,
+      guest_list: data.guest_list || undefined
     };
   },
   
@@ -113,11 +117,31 @@ export const supabaseService = {
       createdAt: data.created_at || '',
       moderationEnabled: data.moderation_enabled || false,
       isPrivate: data.is_private || false,
-      ownerId: data.owner_id || undefined
+      ownerId: data.owner_id || undefined,
+      guest_list: data.guest_list || undefined
     };
     
     console.log("Album fetched successfully:", album);
     return album;
+  },
+  
+  async updateAlbumGuestList(albumId: string, guestList: string[]): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('albums')
+        .update({ guest_list: guestList })
+        .eq('id', albumId);
+      
+      if (error) {
+        console.error('Error updating guest list:', error);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating guest list:', error);
+      return false;
+    }
   },
   
   // Photo methods
@@ -138,7 +162,8 @@ export const supabaseService = {
       url: photo.url,
       thumbnailUrl: photo.thumbnail_url,
       createdAt: photo.created_at || '',
-      approved: photo.approved || false
+      approved: photo.approved || false,
+      metadata: photo.metadata || undefined
     }));
   },
   
@@ -160,7 +185,8 @@ export const supabaseService = {
       url: photo.url,
       thumbnailUrl: photo.thumbnail_url,
       createdAt: photo.created_at || '',
-      approved: photo.approved || false
+      approved: photo.approved || false,
+      metadata: photo.metadata || undefined
     }));
   },
   
@@ -169,6 +195,7 @@ export const supabaseService = {
     url: string; 
     thumbnailUrl: string; 
     approved?: boolean;
+    metadata?: any;
   }): Promise<UploadResponse> {
     try {
       const { data, error } = await supabase
@@ -177,7 +204,8 @@ export const supabaseService = {
           album_id: photoData.albumId,
           url: photoData.url,
           thumbnail_url: photoData.thumbnailUrl,
-          approved: photoData.approved ?? true
+          approved: photoData.approved ?? true,
+          metadata: photoData.metadata || null
         })
         .select()
         .single();
@@ -190,7 +218,8 @@ export const supabaseService = {
         url: data.url,
         thumbnailUrl: data.thumbnail_url,
         createdAt: data.created_at || '',
-        approved: data.approved || false
+        approved: data.approved || false,
+        metadata: data.metadata || undefined
       };
       
       return {
@@ -223,7 +252,8 @@ export const supabaseService = {
         url: data.url,
         thumbnailUrl: data.thumbnail_url,
         createdAt: data.created_at || '',
-        approved: data.approved || false
+        approved: data.approved || false,
+        metadata: data.metadata || undefined
       };
     } catch (error) {
       console.error('Error moderating photo:', error);
