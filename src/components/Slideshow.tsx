@@ -16,7 +16,7 @@ const Slideshow: React.FC<SlideshowProps> = ({
   photos, 
   albumId,
   autoRefresh = true, 
-  interval = 15000 // Changed default to 15 seconds 
+  interval = 8000 // Changed to 8 seconds
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -43,6 +43,7 @@ const Slideshow: React.FC<SlideshowProps> = ({
   // Handle auto-advancing slides when playing
   useEffect(() => {
     if (isPlaying && photos.length > 0) {
+      console.log(`Setting up timer for ${interval}ms`);
       const timer = setTimeout(goToNextSlide, interval);
       return () => clearTimeout(timer);
     }

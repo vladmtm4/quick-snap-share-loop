@@ -57,9 +57,9 @@ const SlideshowPage: React.FC = () => {
   useEffect(() => {
     loadPhotos();
     
-    // Set up real-time subscription for new or updated photos
+    // Set up real-time subscription for new or updated photos with enhanced logging
     const channel = supabase
-      .channel('public:photos')
+      .channel(`photos-album-${albumId}`) // Use unique channel name for this album
       .on('postgres_changes', 
         {
           event: '*', 
@@ -77,9 +77,17 @@ const SlideshowPage: React.FC = () => {
             // Check if this is a new photo or an update to an existing one
             if (payload.eventType === 'INSERT') {
               console.log("New photo detected, adding to slideshow:", payload.new);
-              setPhotos(currentPhotos => [...currentPhotos, payload.new as Photo]);
+              setPhotos(currentPhotos => {
+                const newPhoto = payload.new as Photo;
+                // Check if the photo already exists in our array to prevent duplicates
+                if (currentPhotos.some(photo => photo.id === newPhoto.id)) {
+                  return currentPhotos;
+                }
+                return [...currentPhotos, newPhoto];
+              });
             } else {
               // For updates, replace the existing photo
+              console.log("Updated photo detected:", payload.new);
               setPhotos(currentPhotos => 
                 currentPhotos.map(photo => 
                   photo.id === payload.new.id ? payload.new as Photo : photo
@@ -88,13 +96,21 @@ const SlideshowPage: React.FC = () => {
             }
           } else if (payload.eventType === 'DELETE') {
             // Remove deleted photos
+            console.log("Deleted photo detected:", payload.old);
             setPhotos(currentPhotos => 
               currentPhotos.filter(photo => photo.id !== payload.old.id)
             );
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Real-time subscription status:", status);
+        if (status === 'SUBSCRIBED') {
+          console.log(`Successfully subscribed to real-time updates for album: ${albumId}`);
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error("Error subscribing to real-time updates");
+        }
+      });
     
     // Log subscription success
     console.log("Real-time subscription activated for album:", albumId);
@@ -123,7 +139,7 @@ const SlideshowPage: React.FC = () => {
   
   return (
     <div className="h-screen w-screen overflow-hidden bg-black">
-      <Slideshow photos={photos} albumId={albumId} interval={15000} />
+      <Slideshow photos={photos} albumId={albumId} interval={8000} />
     </div>
   );
 };
