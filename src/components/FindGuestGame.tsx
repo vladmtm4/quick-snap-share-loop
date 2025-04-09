@@ -30,6 +30,8 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [changingGuest, setChangingGuest] = useState(false);
   const [guestAssigned, setGuestAssigned] = useState(false);
+  // Track if the user has rejected a guest because it was themselves
+  const [hasRejectedSelf, setHasRejectedSelf] = useState(false);
   const [error, setError] = useState('');
   
   useEffect(() => {
@@ -82,6 +84,10 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
         setRandomGuest(assignedGuest);
         setGuestAssigned(true);
         console.log("Found previously assigned guest:", assignedGuest);
+        
+        // Check if user has already rejected themselves
+        const hasRejected = localStorage.getItem(`rejected_self_${albumId}`) === 'true';
+        setHasRejectedSelf(hasRejected);
         
         toast({
           title: "Welcome Back!",
@@ -170,6 +176,10 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   const handleResetGame = async () => {
     setAllFoundGuests({});
     setScore(0);
+    setHasRejectedSelf(false);
+    
+    // Clear the stored rejection flag
+    localStorage.removeItem(`rejected_self_${albumId}`);
     
     // Clear the stored assignment for this album
     localStorage.removeItem(`album_${albumId}_device_${localStorage.getItem('device_id')}`);
@@ -179,6 +189,10 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   };
   
   const handleChangeGuest = async () => {
+    // Mark that the user has rejected this guest (assuming it was themselves)
+    setHasRejectedSelf(true);
+    localStorage.setItem(`rejected_self_${albumId}`, 'true');
+    
     await getOrAssignRandomGuest(false, true);
   };
   
@@ -274,31 +288,47 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
                   )}
                   
                   <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-                    <Button 
-                      onClick={handleChangeGuest} 
-                      variant="outline"
-                      disabled={changingGuest}
-                      className="sm:flex-1"
-                    >
-                      <UserRound className="mr-2 h-4 w-4" />
-                      {changingGuest ? "Changing..." : "Change Guest"}
-                    </Button>
+                    {/* Only show Change Guest button if user hasn't rejected a guest yet */}
+                    {!hasRejectedSelf && (
+                      <Button 
+                        onClick={handleChangeGuest} 
+                        variant="outline"
+                        disabled={changingGuest}
+                        className="sm:flex-1"
+                      >
+                        <UserRound className="mr-2 h-4 w-4" />
+                        {changingGuest ? "Changing..." : "This is me"}
+                      </Button>
+                    )}
                     
-                    <Button
-                      onClick={handleAcceptChallenge}
-                      className="bg-green-600 hover:bg-green-700 sm:flex-1"
-                    >
-                      <Check className="mr-2 h-4 w-4" />
-                      Accept Challenge
-                    </Button>
-                    
-                    <Button 
-                      onClick={handleTakePhoto} 
-                      className="bg-brand-blue hover:bg-brand-darkBlue sm:flex-1"
-                    >
-                      <Camera className="mr-2 h-4 w-4" />
-                      Take Photo
-                    </Button>
+                    {/* Auto-accept after rejecting self, or show accept button */}
+                    {hasRejectedSelf ? (
+                      <Button 
+                        onClick={handleTakePhoto} 
+                        className="bg-brand-blue hover:bg-brand-darkBlue sm:flex-1"
+                      >
+                        <Camera className="mr-2 h-4 w-4" />
+                        Take Photo
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          onClick={handleAcceptChallenge}
+                          className="bg-green-600 hover:bg-green-700 sm:flex-1"
+                        >
+                          <Check className="mr-2 h-4 w-4" />
+                          Accept Challenge
+                        </Button>
+                        
+                        <Button 
+                          onClick={handleTakePhoto} 
+                          className="bg-brand-blue hover:bg-brand-darkBlue sm:flex-1"
+                        >
+                          <Camera className="mr-2 h-4 w-4" />
+                          Take Photo
+                        </Button>
+                      </>
+                    )}
                     
                     {isAdmin && (
                       <Button 

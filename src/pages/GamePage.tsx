@@ -79,7 +79,7 @@ const GamePage: React.FC = () => {
           <div className="mb-6 text-center">
             <h1 className="text-2xl font-bold mb-2">Photo Challenge</h1>
             <p className="text-gray-600">
-              Find your assigned guest and take a fun photo together!
+              Get a challenge to find another guest and take a fun photo together!
             </p>
           </div>
           
