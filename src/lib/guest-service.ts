@@ -137,6 +137,69 @@ export const guestService = {
       return { data: null, error };
     }
   },
+
+  // Get a previously assigned guest by device ID (stored in localStorage)
+  async getGuestByDeviceId(albumId: string, deviceId: string): Promise<SingleGuestResponse> {
+    try {
+      // Look up the guest assignment in local storage first
+      const storedGuestId = localStorage.getItem(`album_${albumId}_device_${deviceId}`);
+      
+      if (storedGuestId) {
+        // Fetch the guest by ID
+        const { data, error } = await supabase
+          .from('guests')
+          .select('*')
+          .eq('id', storedGuestId)
+          .eq('albumid', albumId)
+          .eq('approved', true)
+          .single();
+          
+        if (error) {
+          console.error("Error fetching assigned guest:", error);
+          return { data: null, error };
+        }
+        
+        if (data) {
+          const guest: Guest = {
+            id: data.id,
+            albumId: data.albumid,
+            guestName: data.guestname,
+            email: data.email || undefined,
+            phone: data.phone || undefined,
+            approved: data.approved,
+            created_at: data.created_at,
+            assigned: true,
+            photoUrl: data.photo_url || undefined
+          };
+          
+          return { data: guest, error: null };
+        }
+      }
+      
+      // If no stored guest or guest not found, return null
+      return { data: null, error: null };
+    } catch (error) {
+      console.error("Error in getGuestByDeviceId:", error);
+      return { data: null, error };
+    }
+  },
+  
+  // Store guest assignment to device
+  storeGuestAssignment(albumId: string, guestId: string): void {
+    try {
+      // Generate a unique device ID or use existing one
+      let deviceId = localStorage.getItem('device_id');
+      if (!deviceId) {
+        deviceId = uuidv4();
+        localStorage.setItem('device_id', deviceId);
+      }
+      
+      // Store the guest assignment
+      localStorage.setItem(`album_${albumId}_device_${deviceId}`, guestId);
+    } catch (error) {
+      console.error("Error storing guest assignment:", error);
+    }
+  },
   
   async resetAllGuestAssignments(albumId: string): Promise<boolean> {
     console.log("Resetting all guest assignments for album:", albumId);

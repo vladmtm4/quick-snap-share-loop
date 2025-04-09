@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -42,7 +41,9 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
         
         const guestsList = data || [];
         setGuestData(guestsList);
-        getOrAssignRandomGuest();
+        
+        // Check if we have a previously assigned guest
+        checkForPreviousAssignment();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load guests');
       } finally {
@@ -52,6 +53,38 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
     
     fetchGuests();
   }, [albumId]);
+  
+  const checkForPreviousAssignment = async () => {
+    try {
+      // Get device ID from localStorage or create one
+      let deviceId = localStorage.getItem('device_id');
+      if (!deviceId) {
+        deviceId = crypto.randomUUID();
+        localStorage.setItem('device_id', deviceId);
+      }
+      
+      // Try to get previously assigned guest
+      const { data: assignedGuest, error } = await guestService.getGuestByDeviceId(albumId, deviceId);
+      
+      if (error) {
+        console.error("Error checking for previous assignment:", error);
+        getOrAssignRandomGuest();
+        return;
+      }
+      
+      // If we found a previously assigned guest, use it
+      if (assignedGuest) {
+        setRandomGuest(assignedGuest);
+        console.log("Found previously assigned guest:", assignedGuest);
+      } else {
+        // Otherwise get a new assignment
+        getOrAssignRandomGuest();
+      }
+    } catch (err) {
+      console.error("Error in checkForPreviousAssignment:", err);
+      getOrAssignRandomGuest();
+    }
+  };
   
   const getOrAssignRandomGuest = async () => {
     try {
@@ -69,7 +102,11 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
         return;
       }
       
-      setRandomGuest(guest);
+      if (guest) {
+        // Store the assignment so it persists between sessions
+        guestService.storeGuestAssignment(albumId, guest.id);
+        setRandomGuest(guest);
+      }
     } catch (err) {
       console.error("Error getting random guest:", err);
       toast({
@@ -89,15 +126,16 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
       const newFoundGuests = { ...allFoundGuests, [guest.id]: true };
       setAllFoundGuests(newFoundGuests);
       setScore(score + 1);
-      
-      // Get a new random guest
-      getOrAssignRandomGuest();
     }
   };
   
   const handleResetGame = async () => {
     setAllFoundGuests({});
     setScore(0);
+    
+    // Clear the stored assignment for this album
+    localStorage.removeItem(`album_${albumId}_device_${localStorage.getItem('device_id')}`);
+    
     await guestService.resetAllGuestAssignments(albumId);
     getOrAssignRandomGuest();
   };
@@ -120,15 +158,20 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
     );
   }
   
+  // Restrict non-admin users to only "find" mode
+  const isAdmin = false; // Guest users are never admin
+
   return (
     <div className="space-y-4">
-      <Tabs defaultValue="find" onValueChange={(value) => setGameMode(value as 'find' | 'list')}>
+      <Tabs defaultValue="find" onValueChange={(value) => isAdmin && setGameMode(value as 'find' | 'list')}>
         <TabsList className="w-full">
           <TabsTrigger value="find" className="flex-1">
             <UserSearch className="mr-2 h-4 w-4" />
             Find a Guest
           </TabsTrigger>
-          <TabsTrigger value="list" className="flex-1">Guest List</TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="list" className="flex-1">Guest List</TabsTrigger>
+          )}
         </TabsList>
         
         <TabsContent value="find" className="space-y-4 pt-2">
@@ -157,7 +200,9 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
                   )}
                   
                   <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-                    <Button onClick={handleResetGame} variant="outline" className="sm:flex-1">Reset Game</Button>
+                    {isAdmin && (
+                      <Button onClick={handleResetGame} variant="outline" className="sm:flex-1">Reset Game</Button>
+                    )}
                     <Button 
                       onClick={handleTakePhoto} 
                       className="bg-brand-blue hover:bg-brand-darkBlue sm:flex-1"
@@ -176,25 +221,27 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="list">
-          <div className="grid gap-2">
-            {guestData.filter(g => g.approved !== false).map(guest => (
-              <Button 
-                key={guest.id}
-                variant={selectedGuest?.id === guest.id ? "default" : "outline"}
-                className="justify-between w-full"
-                onClick={() => handleGuestSelected(guest)}
-              >
-                <span>{guest.guestName}</span>
-                {allFoundGuests[guest.id] && <Badge>Found</Badge>}
-              </Button>
-            ))}
-            
-            {guestData.length === 0 && !loading && (
-              <p className="text-center py-4 text-muted-foreground">No guests in this album yet</p>
-            )}
-          </div>
-        </TabsContent>
+        {isAdmin && (
+          <TabsContent value="list">
+            <div className="grid gap-2">
+              {guestData.filter(g => g.approved !== false).map(guest => (
+                <Button 
+                  key={guest.id}
+                  variant={selectedGuest?.id === guest.id ? "default" : "outline"}
+                  className="justify-between w-full"
+                  onClick={() => handleGuestSelected(guest)}
+                >
+                  <span>{guest.guestName}</span>
+                  {allFoundGuests[guest.id] && <Badge>Found</Badge>}
+                </Button>
+              ))}
+              
+              {guestData.length === 0 && !loading && (
+                <p className="text-center py-4 text-muted-foreground">No guests in this album yet</p>
+              )}
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
       
       <div className="flex justify-between">
