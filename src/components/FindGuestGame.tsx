@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -116,6 +117,11 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
         // Store the assignment so it persists between sessions
         guestService.storeGuestAssignment(albumId, guest.id);
         setRandomGuest(guest);
+        
+        toast({
+          title: "New Guest Assigned",
+          description: `You have been assigned ${guest.guestName}!`,
+        });
       }
     } catch (err) {
       console.error("Error getting random guest:", err);
@@ -156,10 +162,6 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   
   const handleChangeGuest = async () => {
     await getOrAssignRandomGuest(false, true);
-    toast({
-      title: "Guest Changed",
-      description: "You've been assigned a new guest!",
-    });
   };
   
   const handleTakePhoto = () => {

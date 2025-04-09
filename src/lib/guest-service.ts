@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 import { Guest, GuestResponse, SingleGuestResponse } from "@/types";
@@ -62,13 +63,13 @@ export const guestService = {
       // Get a random unassigned guest - excluding the currently assigned guest to this device ID
       const currentAssignedId = localStorage.getItem(`album_${albumId}_device_${deviceId}`);
       
-      // Use a raw query to exclude the current assigned guest
+      // Use a database query to find unassigned guests with photos
       let query = supabase
         .from('guests')
         .select('*')
         .eq('albumid', albumId)
         .eq('approved', true)
-        .eq('assigned', false)
+        .eq('assigned', false) // Look for guests not assigned in DB
         .not('photo_url', 'is', null); // Make sure we only get guests with photos
       
       // Add a filter to exclude the current guest if one is assigned
@@ -123,7 +124,7 @@ export const guestService = {
               return { data: null, error: new Error("No approved guests available") };
             }
             
-            // Mark this guest as assigned
+            // Mark this guest as assigned in the database
             await this.markGuestAsAssigned(lastResortQuery.data.id);
             
             const guest: Guest = {
@@ -145,7 +146,7 @@ export const guestService = {
             return { data: null, error: new Error("No approved guests available") };
           }
           
-          // Mark this guest as assigned
+          // Mark this guest as assigned in the database
           await this.markGuestAsAssigned(resetData.id);
           
           const guest: Guest = {
@@ -171,7 +172,7 @@ export const guestService = {
         return { data: null, error: new Error("No unassigned guests available") };
       }
       
-      // Mark this guest as assigned
+      // Mark this guest as assigned in the database
       await this.markGuestAsAssigned(data.id);
       
       const guest: Guest = {
