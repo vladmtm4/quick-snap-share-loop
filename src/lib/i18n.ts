@@ -1,16 +1,16 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
-// A simple i18n system for our app
 export type SupportedLanguage = 'en' | 'he';
 
-interface Translations {
+// Define the translation cache structure
+interface TranslationCache {
   [key: string]: {
-    en: string;
-    he: string;
+    [lang: string]: string;
   };
 }
 
-const translations: Translations = {
-  // General
+// Core translations that we keep locally to avoid API calls for common text
+const coreTranslations = {
   appName: {
     en: 'QuickSnap',
     he: 'קוויקסנאפ'
@@ -19,166 +19,6 @@ const translations: Translations = {
     en: 'Loading...',
     he: 'טוען...'
   },
-  cancel: {
-    en: 'Cancel',
-    he: 'ביטול'
-  },
-  submit: {
-    en: 'Submit',
-    he: 'שלח'
-  },
-  save: {
-    en: 'Save',
-    he: 'שמור'
-  },
-  delete: {
-    en: 'Delete',
-    he: 'מחק'
-  },
-  back: {
-    en: 'Back',
-    he: 'חזור'
-  },
-  home: {
-    en: 'Home',
-    he: 'בית'
-  },
-  close: {
-    en: 'Close',
-    he: 'סגור'
-  },
-  
-  // Albums
-  album: {
-    en: 'Album',
-    he: 'אלבום'
-  },
-  viewAlbum: {
-    en: 'View Album',
-    he: 'צפה באלבום'
-  },
-  createAlbum: {
-    en: 'Create Album',
-    he: 'צור אלבום'
-  },
-  uploadPhotos: {
-    en: 'Upload Photos',
-    he: 'העלה תמונות'
-  },
-  slideshow: {
-    en: 'Slideshow',
-    he: 'מצגת'
-  },
-  shareQR: {
-    en: 'Share QR Code',
-    he: 'שתף קוד QR'
-  },
-  moderation: {
-    en: 'Moderation',
-    he: 'ניהול'
-  },
-  noPhotosYet: {
-    en: 'No photos yet',
-    he: 'אין תמונות עדיין'
-  },
-  beTheFirst: {
-    en: 'Be the first to upload!',
-    he: 'היה הראשון להעלות!'
-  },
-  scanToJoin: {
-    en: 'Scan to join',
-    he: 'סרוק להצטרף'
-  },
-  
-  // Photo Game
-  photoGame: {
-    en: 'Photo Challenge',
-    he: 'אתגר תמונות'
-  },
-  findGuest: {
-    en: 'Find This Guest',
-    he: 'מצא את האורח הזה'
-  },
-  guestChallenge: {
-    en: 'Take a photo with',
-    he: 'צלם תמונה עם'
-  },
-  youMission: {
-    en: 'Your mission (should you choose to accept it):',
-    he: 'המשימה שלך (אם תבחר לקבל אותה):'
-  },
-  takePhoto: {
-    en: 'Take Photo',
-    he: 'צלם תמונה'
-  },
-  photoUploaded: {
-    en: 'Challenge photo uploaded successfully!',
-    he: 'תמונת האתגר הועלתה בהצלחה!'
-  },
-  markComplete: {
-    en: 'Mark as Completed',
-    he: 'סמן כהושלם'
-  },
-  challengeComplete: {
-    en: 'Challenge completed!',
-    he: 'האתגר הושלם!'
-  },
-  returnToAlbum: {
-    en: 'Return to Album',
-    he: 'חזור לאלבום'
-  },
-  thanksForParticipating: {
-    en: 'Thanks for participating in the wedding photo game!',
-    he: 'תודה שהשתתפת במשחק תמונות החתונה!'
-  },
-  takePhotoWithGuest: {
-    en: 'Take the coolest photo you can with them and upload it!',
-    he: 'צלם את התמונה המגניבה ביותר שאתה יכול איתם והעלה אותה!'
-  },
-  
-  // Guest Management
-  guestManagement: {
-    en: 'Guest Management',
-    he: 'ניהול אורחים'
-  },
-  addGuest: {
-    en: 'Guest added',
-    he: 'אורח נוסף'
-  },
-  uploadGuestPhoto: {
-    en: 'Upload Guest Photo',
-    he: 'העלה תמונת אורח'
-  },
-  guestName: {
-    en: 'Guest Name',
-    he: 'שם אורח'
-  },
-  photo: {
-    en: 'Photo',
-    he: 'תמונה'
-  },
-  assignedTo: {
-    en: 'Assigned To',
-    he: 'הוקצה ל'
-  },
-  notAssigned: {
-    en: 'Not Assigned',
-    he: 'לא הוקצה'
-  },
-  guestPhotoUploaded: {
-    en: 'Guest photo uploaded successfully!',
-    he: 'תמונת האורח הועלתה בהצלחה!'
-  },
-  guestList: {
-    en: 'Guest List',
-    he: 'רשימת אורחים'
-  },
-  noGuestsFound: {
-    en: 'No guests found',
-    he: 'לא נמצאו אורחים'
-  },
-  
-  // Language
   language: {
     en: 'Language',
     he: 'שפה'
@@ -193,39 +33,112 @@ const translations: Translations = {
   }
 };
 
-// Create a function to get translations for the selected language
-export function t(key: string, language: SupportedLanguage = 'en'): string {
-  if (!translations[key]) {
-    console.warn(`Translation key not found: ${key}`);
-    return key;
+// Translation cache to avoid unnecessary API calls
+const translationCache: TranslationCache = { ...coreTranslations };
+
+// Function to translate text via API
+async function translateViaAPI(text: string, targetLang: SupportedLanguage): Promise<string> {
+  if (!text) return '';
+  
+  // If the text is in the cache, return it
+  if (translationCache[text]?.[targetLang]) {
+    return translationCache[text][targetLang];
   }
-  return translations[key][language];
+  
+  // For demonstration, we'll use a mock API call
+  // In a real app, this would be replaced with an actual API call to a service like Google Translate
+  try {
+    console.log(`Translating "${text}" to ${targetLang}`);
+    
+    // This is where you would integrate with a real translation API
+    // For now, we'll simulate a translation with a delay
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Mock translation (in real implementation, this would come from the API)
+    let translatedText: string;
+    
+    if (targetLang === 'he') {
+      // Simple mock Hebrew translation by reversing the text (this is just for demo)
+      translatedText = text.split('').reverse().join('') + ' (HE)';
+    } else {
+      // For English, just return the original text
+      translatedText = text;
+    }
+    
+    // Cache the result
+    if (!translationCache[text]) {
+      translationCache[text] = {};
+    }
+    translationCache[text][targetLang] = translatedText;
+    
+    return translatedText;
+  } catch (error) {
+    console.error('Translation API error:', error);
+    return text; // Fallback to original text
+  }
 }
 
-// Create a React context for language
-import React, { createContext, useContext, useState } from 'react';
-
+// Interface for our language context
 interface LanguageContextType {
   language: SupportedLanguage;
   setLanguage: (lang: SupportedLanguage) => void;
   translate: (key: string) => string;
+  translateAsync: (text: string) => Promise<string>;
+  isLoading: boolean;
 }
 
 const LanguageContext = createContext<LanguageContextType>({
   language: 'en',
   setLanguage: () => {},
-  translate: (key) => key
+  translate: (key) => key,
+  translateAsync: async (text) => text,
+  isLoading: false
 });
 
 export const LanguageProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const [language, setLanguage] = useState<SupportedLanguage>('en');
+  const [loading, setLoading] = useState(false);
   
+  // Function to get translation for core UI elements (synchronous)
   const translate = (key: string): string => {
-    return t(key, language);
+    if (coreTranslations[key]?.[language]) {
+      return coreTranslations[key][language];
+    }
+    
+    if (translationCache[key]?.[language]) {
+      return translationCache[key][language];
+    }
+    
+    // If not in cache, return the key itself
+    return key;
+  };
+  
+  // Function to translate arbitrary text (asynchronous)
+  const translateAsync = async (text: string): Promise<string> => {
+    if (!text) return '';
+    
+    setLoading(true);
+    try {
+      const result = await translateViaAPI(text, language);
+      setLoading(false);
+      return result;
+    } catch (error) {
+      setLoading(false);
+      console.error('Translation error:', error);
+      return text; // Fallback to original text
+    }
   };
   
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, translate }}>
+    <LanguageContext.Provider 
+      value={{ 
+        language, 
+        setLanguage, 
+        translate, 
+        translateAsync,
+        isLoading: loading 
+      }}
+    >
       <div dir={language === 'he' ? 'rtl' : 'ltr'} className="min-h-screen">
         {children}
       </div>
@@ -234,3 +147,16 @@ export const LanguageProvider: React.FC<{children: React.ReactNode}> = ({ childr
 };
 
 export const useLanguage = () => useContext(LanguageContext);
+
+// Helper function for external modules
+export function t(key: string, language: SupportedLanguage = 'en'): string {
+  if (coreTranslations[key]?.[language]) {
+    return coreTranslations[key][language];
+  }
+  
+  if (translationCache[key]?.[language]) {
+    return translationCache[key][language];
+  }
+  
+  return key;
+}
