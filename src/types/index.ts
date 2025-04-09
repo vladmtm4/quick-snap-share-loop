@@ -39,6 +39,7 @@ export interface Guest {
   approved?: boolean;
   created_at?: string;
   assigned?: boolean;
+  photoUrl?: string; // Added photoUrl for guest photo
 }
 
 // Responses from supabase guest methods

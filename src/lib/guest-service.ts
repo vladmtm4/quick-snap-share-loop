@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 import { Guest, GuestResponse, SingleGuestResponse } from "@/types";
@@ -29,7 +28,8 @@ export const guestService = {
         phone: item.phone || undefined,
         approved: item.approved,
         created_at: item.created_at,
-        assigned: item.assigned || false
+        assigned: item.assigned || false,
+        photoUrl: item.photo_url || undefined
       }));
       
       return { data: guests, error: null };
@@ -50,6 +50,7 @@ export const guestService = {
         .eq('albumid', albumId)
         .eq('approved', true)
         .eq('assigned', false)
+        .not('photo_url', 'is', null) // Make sure we only get guests with photos
         .limit(1)
         .single();
       
@@ -62,6 +63,7 @@ export const guestService = {
             .select('*')
             .eq('albumid', albumId)
             .eq('approved', true)
+            .not('photo_url', 'is', null) // Make sure we only get guests with photos
             .limit(1)
             .single();
             
@@ -85,7 +87,8 @@ export const guestService = {
             phone: resetData.phone || undefined,
             approved: resetData.approved,
             created_at: resetData.created_at,
-            assigned: true
+            assigned: true,
+            photoUrl: resetData.photo_url || undefined
           };
           
           return { data: guest, error: null };
@@ -110,7 +113,8 @@ export const guestService = {
         phone: data.phone || undefined,
         approved: data.approved,
         created_at: data.created_at,
-        assigned: true
+        assigned: true,
+        photoUrl: data.photo_url || undefined
       };
       
       return { data: guest, error: null };
@@ -163,7 +167,12 @@ export const guestService = {
     }
   },
   
-  async addGuestToAlbum(albumId: string, guestData: { guestName: string, email?: string, phone?: string }): Promise<SingleGuestResponse> {
+  async addGuestToAlbum(albumId: string, guestData: { 
+    guestName: string, 
+    email?: string, 
+    phone?: string,
+    photoUrl?: string 
+  }): Promise<SingleGuestResponse> {
     console.log("Adding guest to album:", albumId, guestData);
     
     try {
@@ -175,7 +184,8 @@ export const guestService = {
         phone: guestData.phone || null,
         approved: false,
         assigned: false, // Using direct property assignment
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        photo_url: guestData.photoUrl || null
       };
       
       const { data, error } = await supabase
@@ -197,13 +207,35 @@ export const guestService = {
         phone: data.phone || undefined,
         approved: data.approved,
         created_at: data.created_at,
-        assigned: data.assigned || false
+        assigned: data.assigned || false,
+        photoUrl: data.photo_url || undefined
       };
       
       return { data: guest, error: null };
     } catch (error) {
       console.error("Error in addGuestToAlbum:", error);
       return { data: null, error };
+    }
+  },
+  
+  async updateGuestPhoto(guestId: string, photoUrl: string): Promise<{success: boolean, error?: any}> {
+    console.log("Updating guest photo:", guestId, photoUrl);
+    
+    try {
+      const { error } = await supabase
+        .from('guests')
+        .update({ photo_url: photoUrl } as any) // Using 'as any' to bypass type checking
+        .eq('id', guestId);
+      
+      if (error) {
+        console.error("Error updating guest photo:", error);
+        throw error;
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error("Error in updateGuestPhoto:", error);
+      return { success: false, error };
     }
   },
   

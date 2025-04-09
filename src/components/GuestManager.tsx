@@ -1,12 +1,15 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { guestService } from '@/lib/guest-service';
-import { Loader2, X, Check, UserPlus, Mail } from 'lucide-react';
+import { supabaseService } from '@/lib/supabase-service';
+import { Loader2, X, Check, UserPlus, Mail, Image } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Guest } from '@/types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 interface GuestManagerProps {
   albumId: string;
@@ -19,6 +22,8 @@ const GuestManager: React.FC<GuestManagerProps> = ({ albumId }) => {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [adding, setAdding] = useState(false);
   const [loadingGuests, setLoadingGuests] = useState<Record<string, boolean>>({});
+  const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   useEffect(() => {
     loadGuests();
@@ -125,6 +130,51 @@ const GuestManager: React.FC<GuestManagerProps> = ({ albumId }) => {
     });
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setPhotoFile(e.target.files[0]);
+    }
+  };
+
+  const handleUploadPhoto = async (guestId: string) => {
+    if (!photoFile) return;
+    
+    setUploadingPhoto(guestId);
+    try {
+      // Upload the image to storage
+      const storageResult = await supabaseService.uploadImageToStorage(albumId, photoFile);
+      
+      if (!storageResult) {
+        throw new Error('Failed to upload image to storage');
+      }
+      
+      // Update the guest with the photo URL
+      const updateResult = await guestService.updateGuestPhoto(guestId, storageResult.url);
+      
+      if (!updateResult.success) {
+        throw updateResult.error || new Error('Failed to update guest photo');
+      }
+      
+      loadGuests();
+      toast({
+        title: 'Photo uploaded',
+        description: 'Guest photo has been updated successfully',
+      });
+      
+      // Reset the file input
+      setPhotoFile(null);
+    } catch (error) {
+      console.error('Error uploading guest photo:', error);
+      toast({
+        title: 'Upload failed',
+        description: 'Could not upload guest photo',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingPhoto(null);
+    }
+  };
+
   const approvedGuests = guests.filter(guest => guest.approved !== false);
   const pendingGuests = guests.filter(guest => guest.approved === false);
 
@@ -166,8 +216,56 @@ const GuestManager: React.FC<GuestManagerProps> = ({ albumId }) => {
                 key={guest.id}
                 className="flex items-center justify-between border p-2 rounded-md"
               >
-                <div className="truncate flex-1">{guest.guestName}</div>
+                <div className="flex items-center gap-2">
+                  {guest.photoUrl ? (
+                    <img 
+                      src={guest.photoUrl} 
+                      alt={guest.guestName} 
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                      <span className="text-gray-500 text-xs">{guest.guestName.charAt(0)}</span>
+                    </div>
+                  )}
+                  <div className="truncate">{guest.guestName}</div>
+                </div>
                 <div className="flex gap-1">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Upload photo"
+                      >
+                        <Image className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Upload Photo for {guest.guestName}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <Input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={handleFileChange} 
+                        />
+                        <Button 
+                          onClick={() => handleUploadPhoto(guest.id)} 
+                          disabled={!photoFile || uploadingPhoto === guest.id}
+                          className="w-full"
+                        >
+                          {uploadingPhoto === guest.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <Image className="h-4 w-4 mr-2" />
+                          )}
+                          Upload Photo
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -206,8 +304,56 @@ const GuestManager: React.FC<GuestManagerProps> = ({ albumId }) => {
                 key={guest.id}
                 className="flex items-center justify-between border p-2 rounded-md"
               >
-                <div className="truncate flex-1">{guest.guestName}</div>
+                <div className="flex items-center gap-2">
+                  {guest.photoUrl ? (
+                    <img 
+                      src={guest.photoUrl} 
+                      alt={guest.guestName} 
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                      <span className="text-gray-500 text-xs">{guest.guestName.charAt(0)}</span>
+                    </div>
+                  )}
+                  <div className="truncate">{guest.guestName}</div>
+                </div>
                 <div className="flex gap-1">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Upload photo"
+                      >
+                        <Image className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Upload Photo for {guest.guestName}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <Input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={handleFileChange} 
+                        />
+                        <Button 
+                          onClick={() => handleUploadPhoto(guest.id)} 
+                          disabled={!photoFile || uploadingPhoto === guest.id}
+                          className="w-full"
+                        >
+                          {uploadingPhoto === guest.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <Image className="h-4 w-4 mr-2" />
+                          )}
+                          Upload Photo
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                   <Button
                     variant="ghost"
                     size="icon"

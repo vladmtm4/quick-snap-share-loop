@@ -141,6 +141,21 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
               {randomGuest ? (
                 <div className="text-center">
                   <h3 className="text-2xl font-bold mb-4">{randomGuest.guestName}</h3>
+                  
+                  {randomGuest.photoUrl ? (
+                    <div className="mb-4 flex justify-center">
+                      <img 
+                        src={randomGuest.photoUrl} 
+                        alt={randomGuest.guestName}
+                        className="w-48 h-48 object-cover rounded-lg shadow-md border border-gray-200" 
+                      />
+                    </div>
+                  ) : (
+                    <div className="mb-4 bg-gray-100 w-48 h-48 mx-auto rounded-lg flex items-center justify-center">
+                      <p className="text-gray-500">No photo available</p>
+                    </div>
+                  )}
+                  
                   <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
                     <Button onClick={handleResetGame} variant="outline" className="sm:flex-1">Reset Game</Button>
                     <Button 
