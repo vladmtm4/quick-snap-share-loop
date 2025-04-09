@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,7 @@ import { guestService } from '@/lib/guest-service';
 import { useLanguage } from '@/lib/i18n';
 import { Guest } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
-import { ChevronsRight, Camera, UserSearch, UserRound, RefreshCw } from 'lucide-react';
+import { ChevronsRight, Camera, UserSearch, UserRound, RefreshCw, Check } from 'lucide-react';
 
 interface FindGuestGameProps {
   albumId: string;
@@ -65,6 +64,8 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
         localStorage.setItem('device_id', deviceId);
       }
       
+      console.log("Checking for previously assigned guest with device ID:", deviceId);
+      
       // Try to get previously assigned guest
       const { data: assignedGuest, error } = await guestService.getGuestByDeviceId(albumId, deviceId);
       
@@ -78,6 +79,11 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
       if (assignedGuest) {
         setRandomGuest(assignedGuest);
         console.log("Found previously assigned guest:", assignedGuest);
+        
+        toast({
+          title: "Welcome Back!",
+          description: `You are assigned to find ${assignedGuest.guestName}!`,
+        });
       } else {
         // Otherwise get a new assignment
         getOrAssignRandomGuest(true);
@@ -98,10 +104,12 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
       
       // If forceNew is true, first clear the current assignment
       if (forceNew && randomGuest) {
+        console.log("Force new guest requested, clearing current assignment");
         await guestService.clearGuestAssignment(albumId);
       }
       
       // Try to get an unassigned guest
+      console.log("Getting unassigned guest");
       const { data: guest, error } = await guestService.getUnassignedGuest(albumId);
       
       if (error) {
@@ -114,6 +122,7 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
       }
       
       if (guest) {
+        console.log("Got unassigned guest:", guest);
         // Store the assignment so it persists between sessions
         guestService.storeGuestAssignment(albumId, guest.id);
         setRandomGuest(guest);
@@ -121,6 +130,12 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
         toast({
           title: "New Guest Assigned",
           description: `You have been assigned ${guest.guestName}!`,
+        });
+      } else {
+        toast({
+          title: "No Guests Available",
+          description: "There are no guests available to assign right now.",
+          variant: "destructive"
         });
       }
     } catch (err) {
@@ -162,6 +177,14 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   
   const handleChangeGuest = async () => {
     await getOrAssignRandomGuest(false, true);
+  };
+  
+  const handleThisIsMe = async () => {
+    // This will confirm the current guest assignment
+    toast({
+      title: "Confirmed!",
+      description: `You are assigned to find ${randomGuest?.guestName}. Good luck!`,
+    });
   };
   
   const handleTakePhoto = () => {
@@ -232,6 +255,14 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
                     >
                       <UserRound className="mr-2 h-4 w-4" />
                       {changingGuest ? "Changing..." : "This isn't me"}
+                    </Button>
+                    
+                    <Button
+                      onClick={handleThisIsMe}
+                      className="bg-green-600 hover:bg-green-700 sm:flex-1"
+                    >
+                      <Check className="mr-2 h-4 w-4" />
+                      This is me
                     </Button>
                     
                     <Button 

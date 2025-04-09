@@ -63,6 +63,8 @@ export const guestService = {
       // Get a random unassigned guest - excluding the currently assigned guest to this device ID
       const currentAssignedId = localStorage.getItem(`album_${albumId}_device_${deviceId}`);
       
+      console.log("Looking for unassigned guest with photo, current assigned ID:", currentAssignedId);
+      
       // Use a database query to find unassigned guests with photos
       let query = supabase
         .from('guests')
@@ -82,9 +84,11 @@ export const guestService = {
         .single();
       
       if (error) {
+        console.log("No unassigned guests found, attempting to reset assignments");
         // If no unassigned guests are found, reset all assignments and try again
         if (error.code === 'PGRST116') {
           await this.resetAllGuestAssignments(albumId);
+          console.log("Assignments reset, trying to find a guest again");
           
           // Get a new guest but exclude current one to avoid reassigning the same guest
           const queryAfterReset = supabase
@@ -104,6 +108,7 @@ export const guestService = {
             .single();
             
           if (resetError) {
+            console.log("Still couldn't find a guest, last resort attempt...");
             // If we still can't find a guest after reset, try without the exclusion filter
             // as a last resort (better to possibly get same guest than no guest at all)
             const lastResortQuery = await supabase
@@ -125,7 +130,8 @@ export const guestService = {
             }
             
             // Mark this guest as assigned in the database
-            await this.markGuestAsAssigned(lastResortQuery.data.id);
+            const markSuccess = await this.markGuestAsAssigned(lastResortQuery.data.id);
+            console.log("Guest assigned successfully:", markSuccess, lastResortQuery.data.id);
             
             const guest: Guest = {
               id: lastResortQuery.data.id,
@@ -147,7 +153,8 @@ export const guestService = {
           }
           
           // Mark this guest as assigned in the database
-          await this.markGuestAsAssigned(resetData.id);
+          const markSuccess = await this.markGuestAsAssigned(resetData.id);
+          console.log("Guest assigned successfully:", markSuccess, resetData.id);
           
           const guest: Guest = {
             id: resetData.id,
@@ -173,7 +180,8 @@ export const guestService = {
       }
       
       // Mark this guest as assigned in the database
-      await this.markGuestAsAssigned(data.id);
+      const markSuccess = await this.markGuestAsAssigned(data.id);
+      console.log("Guest assigned successfully:", markSuccess, data.id);
       
       const guest: Guest = {
         id: data.id,
@@ -216,6 +224,9 @@ export const guestService = {
         }
         
         if (data) {
+          // Ensure this guest is marked as assigned in the database
+          await this.markGuestAsAssigned(data.id);
+          
           const guest: Guest = {
             id: data.id,
             albumId: data.albumid,
@@ -250,15 +261,20 @@ export const guestService = {
         localStorage.setItem('device_id', deviceId);
       }
       
+      console.log("Storing guest assignment:", albumId, guestId, "for device", deviceId);
+      
       // Store the guest assignment
       localStorage.setItem(`album_${albumId}_device_${deviceId}`, guestId);
+      
+      // Also mark as assigned in database (for redundancy)
+      this.markGuestAsAssigned(guestId);
     } catch (error) {
       console.error("Error storing guest assignment:", error);
     }
   },
   
   // Clear guest assignment for current device
-  clearGuestAssignment(albumId: string): boolean {
+  async clearGuestAssignment(albumId: string): Promise<boolean> {
     try {
       const deviceId = localStorage.getItem('device_id');
       if (deviceId) {
@@ -268,7 +284,8 @@ export const guestService = {
           localStorage.removeItem(`album_${albumId}_device_${deviceId}`);
           
           // Update the guest's assigned status in the database
-          this.markGuestAsUnassigned(storedGuestId);
+          await this.markGuestAsUnassigned(storedGuestId);
+          console.log("Cleared assignment for guest:", storedGuestId);
         }
       }
       return true;
@@ -293,6 +310,7 @@ export const guestService = {
         return false;
       }
       
+      console.log("Successfully reset all guest assignments for album:", albumId);
       return true;
     } catch (error) {
       console.error("Error in resetAllGuestAssignments:", error);
@@ -306,7 +324,7 @@ export const guestService = {
     try {
       const { error } = await supabase
         .from('guests')
-        .update({ assigned: true } as any) // Using 'as any' to bypass type checking
+        .update({ assigned: true })
         .eq('id', guestId);
       
       if (error) {
@@ -314,6 +332,7 @@ export const guestService = {
         return false;
       }
       
+      console.log("Successfully marked guest as assigned:", guestId);
       return true;
     } catch (error) {
       console.error("Error in markGuestAsAssigned:", error);
@@ -327,7 +346,7 @@ export const guestService = {
     try {
       const { error } = await supabase
         .from('guests')
-        .update({ assigned: false } as any) // Using 'as any' to bypass type checking
+        .update({ assigned: false })
         .eq('id', guestId);
       
       if (error) {
@@ -335,6 +354,7 @@ export const guestService = {
         return false;
       }
       
+      console.log("Successfully marked guest as unassigned:", guestId);
       return true;
     } catch (error) {
       console.error("Error in markGuestAsUnassigned:", error);
