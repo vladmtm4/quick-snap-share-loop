@@ -163,7 +163,7 @@ export const supabaseService = {
       thumbnailUrl: photo.thumbnail_url,
       createdAt: photo.created_at || '',
       approved: photo.approved || false,
-      metadata: photo.metadata || undefined
+      metadata: photo.metadata ? photo.metadata as Photo['metadata'] : null
     }));
   },
   
@@ -186,7 +186,7 @@ export const supabaseService = {
       thumbnailUrl: photo.thumbnail_url,
       createdAt: photo.created_at || '',
       approved: photo.approved || false,
-      metadata: photo.metadata || undefined
+      metadata: photo.metadata ? photo.metadata as Photo['metadata'] : null
     }));
   },
   
@@ -219,7 +219,7 @@ export const supabaseService = {
         thumbnailUrl: data.thumbnail_url,
         createdAt: data.created_at || '',
         approved: data.approved || false,
-        metadata: data.metadata || undefined
+        metadata: data.metadata ? data.metadata as Photo['metadata'] : null
       };
       
       return {
@@ -253,7 +253,7 @@ export const supabaseService = {
         thumbnailUrl: data.thumbnail_url,
         createdAt: data.created_at || '',
         approved: data.approved || false,
-        metadata: data.metadata || undefined
+        metadata: data.metadata ? data.metadata as Photo['metadata'] : null
       };
     } catch (error) {
       console.error('Error moderating photo:', error);

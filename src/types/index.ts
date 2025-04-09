@@ -21,7 +21,7 @@ export interface Photo {
     gameChallenge?: boolean;
     assignment?: string;
     [key: string]: any;
-  };
+  } | null;
 }
 
 export interface UploadResponse {
