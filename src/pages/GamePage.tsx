@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import FindGuestGame from "@/components/FindGuestGame";
 import { supabaseService } from "@/lib/supabase-service";
@@ -8,6 +8,7 @@ import { Album } from "@/types";
 
 const GamePage: React.FC = () => {
   const { albumId } = useParams<{ albumId: string }>();
+  const navigate = useNavigate();
   const [album, setAlbum] = useState<Album | null>(null);
   const [loading, setLoading] = useState(true);
   
@@ -27,6 +28,15 @@ const GamePage: React.FC = () => {
     
     loadAlbum();
   }, [albumId]);
+
+  const handleClose = () => {
+    // Navigate back to album page
+    if (albumId) {
+      navigate(`/album/${albumId}`);
+    } else {
+      navigate('/');
+    }
+  };
   
   if (loading) {
     return (
@@ -54,7 +64,7 @@ const GamePage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="container max-w-3xl py-8 px-4">
-        <FindGuestGame albumId={album.id} />
+        <FindGuestGame albumId={album.id} onClose={handleClose} />
       </div>
     </div>
   );

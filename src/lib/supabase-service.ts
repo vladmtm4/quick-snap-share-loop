@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 import { Album, Photo, UploadResponse } from "@/types";
@@ -299,6 +298,103 @@ export const supabaseService = {
     } catch (error) {
       console.error('Error uploading image:', error);
       return null;
+    }
+  },
+  
+  // Guest methods
+  async getAllGuestsForAlbum(albumId: string): Promise<any[]> {
+    console.log("Fetching guests for album:", albumId);
+    
+    try {
+      // Here we'd use a real table for guests, but for now we'll query from the database
+      const { data, error } = await supabase
+        .from('guests')
+        .select('*')
+        .eq('albumId', albumId);
+      
+      if (error) {
+        console.error("Error fetching guests:", error);
+        throw error;
+      }
+      
+      return data || [];
+    } catch (error) {
+      console.error("Error in getAllGuestsForAlbum:", error);
+      return [];
+    }
+  },
+  
+  async addGuestToAlbum(albumId: string, guestData: { guestName: string, email?: string, phone?: string }): Promise<any> {
+    console.log("Adding guest to album:", albumId, guestData);
+    
+    try {
+      const newGuest = {
+        id: uuidv4(),
+        albumId,
+        guestName: guestData.guestName,
+        email: guestData.email || null,
+        phone: guestData.phone || null,
+        approved: false,
+        created_at: new Date().toISOString()
+      };
+      
+      const { data, error } = await supabase
+        .from('guests')
+        .insert(newGuest)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Error adding guest:", error);
+        throw error;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error("Error in addGuestToAlbum:", error);
+      throw error;
+    }
+  },
+  
+  async deleteGuest(guestId: string): Promise<{ success: boolean, error?: any }> {
+    console.log("Deleting guest:", guestId);
+    
+    try {
+      const { error } = await supabase
+        .from('guests')
+        .delete()
+        .eq('id', guestId);
+      
+      if (error) {
+        console.error("Error deleting guest:", error);
+        throw error;
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error("Error in deleteGuest:", error);
+      return { success: false, error };
+    }
+  },
+  
+  async approveGuest(guestId: string): Promise<{ success: boolean, error?: any }> {
+    console.log("Approving guest:", guestId);
+    
+    try {
+      const { error } = await supabase
+        .from('guests')
+        .update({ approved: true })
+        .eq('id', guestId);
+      
+      if (error) {
+        console.error("Error approving guest:", error);
+        throw error;
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error("Error in approveGuest:", error);
+      return { success: false, error };
     }
   }
 };

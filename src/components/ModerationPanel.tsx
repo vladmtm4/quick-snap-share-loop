@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
@@ -8,18 +8,40 @@ import { Photo } from "@/types";
 
 interface ModerationPanelProps {
   albumId: string;
-  pendingPhotos: Photo[];
-  onPhotoApproved: () => void;
+  onClose: () => void;
 }
 
 const ModerationPanel: React.FC<ModerationPanelProps> = ({ 
   albumId, 
-  pendingPhotos,
-  onPhotoApproved
+  onClose
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [processingPhotoId, setProcessingPhotoId] = useState<string | null>(null);
+  const [pendingPhotos, setPendingPhotos] = useState<Photo[]>([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  
+  useEffect(() => {
+    const loadPendingPhotos = async () => {
+      try {
+        setLoading(true);
+        const allPhotos = await supabaseService.getPhotosByAlbumId(albumId);
+        const pending = allPhotos.filter(p => !p.approved);
+        setPendingPhotos(pending);
+      } catch (error) {
+        console.error("Error loading pending photos:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load pending photos",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadPendingPhotos();
+  }, [albumId, toast]);
   
   const handleAction = async (photoId: string, approved: boolean) => {
     setIsSubmitting(true);
@@ -35,7 +57,15 @@ const ModerationPanel: React.FC<ModerationPanelProps> = ({
           : "The photo has been rejected"
       });
       
-      onPhotoApproved();
+      // Update the local state to remove the moderated photo
+      setPendingPhotos(prev => prev.filter(p => p.id !== photoId));
+      
+      // If no more photos to moderate, close the panel
+      if (pendingPhotos.length === 1) {
+        setTimeout(() => {
+          onClose();
+        }, 1000);
+      }
     } catch (error) {
       console.error("Error moderating photo:", error);
       toast({
@@ -49,8 +79,27 @@ const ModerationPanel: React.FC<ModerationPanelProps> = ({
     }
   };
   
+  if (loading) {
+    return (
+      <Card className="w-full animate-fade-in">
+        <CardContent className="pt-6">
+          <p className="text-center text-muted-foreground">Loading photos...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   if (pendingPhotos.length === 0) {
-    return null;
+    return (
+      <Card className="w-full animate-fade-in">
+        <CardContent className="pt-6">
+          <p className="text-center text-muted-foreground">No photos pending moderation</p>
+          <div className="flex justify-center mt-4">
+            <Button onClick={onClose}>Close</Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
   
   return (

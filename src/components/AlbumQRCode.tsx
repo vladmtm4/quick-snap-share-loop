@@ -9,10 +9,11 @@ import { Camera, GamepadIcon } from "lucide-react";
 
 interface AlbumQRCodeProps {
   albumId: string;
-  title: string;
+  size?: number;
+  title?: string;
 }
 
-const AlbumQRCode: React.FC<AlbumQRCodeProps> = ({ albumId, title }) => {
+const AlbumQRCode: React.FC<AlbumQRCodeProps> = ({ albumId, size = 200, title = "Album" }) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<string>("upload");
   
@@ -53,7 +54,7 @@ const AlbumQRCode: React.FC<AlbumQRCodeProps> = ({ albumId, title }) => {
           <TabsContent value="upload" className="mt-4">
             <div className="flex flex-col items-center space-y-4">
               <div className="bg-white p-4 rounded-lg shadow-sm">
-                <QRCodeSVG value={uploadUrl} size={200} />
+                <QRCodeSVG value={uploadUrl} size={size} />
               </div>
               <p className="text-sm text-center text-muted-foreground">
                 Scan to upload photos to "{title}"
@@ -70,7 +71,7 @@ const AlbumQRCode: React.FC<AlbumQRCodeProps> = ({ albumId, title }) => {
           <TabsContent value="game" className="mt-4">
             <div className="flex flex-col items-center space-y-4">
               <div className="bg-white p-4 rounded-lg shadow-sm">
-                <QRCodeSVG value={gameUrl} size={200} />
+                <QRCodeSVG value={gameUrl} size={size} />
               </div>
               <p className="text-sm text-center text-muted-foreground">
                 Scan to play the wedding photo challenge game!

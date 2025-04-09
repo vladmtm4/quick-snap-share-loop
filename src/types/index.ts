@@ -29,3 +29,13 @@ export interface UploadResponse {
   photo?: Photo;
   error?: string;
 }
+
+export interface Guest {
+  id: string;
+  albumId: string;
+  guestName: string;
+  email?: string;
+  phone?: string;
+  approved?: boolean;
+  created_at?: string;
+}
