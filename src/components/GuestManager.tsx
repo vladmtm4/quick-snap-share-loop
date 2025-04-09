@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,16 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { supabaseService } from '@/lib/supabase-service';
 import { Loader2, X, Check, UserPlus, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-// Define a Guest type to ensure proper typings
-interface Guest {
-  id: string;
-  albumId: string;
-  guestName: string;
-  email?: string;
-  phone?: string;
-  approved?: boolean;
-}
+import { Guest } from '@/types';
 
 interface GuestManagerProps {
   albumId: string;
@@ -40,17 +30,7 @@ const GuestManager: React.FC<GuestManagerProps> = ({ albumId }) => {
       const { data, error } = await supabaseService.getAllGuestsForAlbum(albumId);
       if (error) throw error;
       
-      // Convert data to proper Guest type
-      const guestsList: Guest[] = data.map((item: any) => ({
-        id: item.id,
-        albumId: item.albumId,
-        guestName: item.guestName || '',
-        email: item.email || '',
-        phone: item.phone || '',
-        approved: item.approved
-      }));
-      
-      setGuests(guestsList);
+      setGuests(data || []);
     } catch (error) {
       console.error('Error loading guests:', error);
       toast({
@@ -139,8 +119,6 @@ const GuestManager: React.FC<GuestManagerProps> = ({ albumId }) => {
   };
 
   const handleSendInvite = (guest: Guest) => {
-    // This would normally send an email invite
-    // For demonstration, we'll just show a toast
     toast({
       title: 'Invite sent',
       description: `An invite was sent to ${guest.guestName}`,

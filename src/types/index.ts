@@ -39,3 +39,14 @@ export interface Guest {
   approved?: boolean;
   created_at?: string;
 }
+
+// Responses from supabase guest methods
+export interface GuestResponse {
+  data: Guest[] | null;
+  error: any | null;
+}
+
+export interface SingleGuestResponse {
+  data: Guest | null;
+  error: any | null;
+}

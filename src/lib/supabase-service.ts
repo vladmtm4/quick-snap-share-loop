@@ -1,6 +1,7 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
-import { Album, Photo, UploadResponse } from "@/types";
+import { Album, Photo, UploadResponse, Guest, GuestResponse, SingleGuestResponse } from "@/types";
 import { Database } from "@/integrations/supabase/types";
 
 // Type aliases for Supabase tables
@@ -302,11 +303,11 @@ export const supabaseService = {
   },
   
   // Guest methods
-  async getAllGuestsForAlbum(albumId: string): Promise<any[]> {
+  async getAllGuestsForAlbum(albumId: string): Promise<GuestResponse> {
     console.log("Fetching guests for album:", albumId);
     
     try {
-      // Here we'd use a real table for guests, but for now we'll query from the database
+      // Use a raw query since the guests table isn't in the Database type definition yet
       const { data, error } = await supabase
         .from('guests')
         .select('*')
@@ -314,17 +315,28 @@ export const supabaseService = {
       
       if (error) {
         console.error("Error fetching guests:", error);
-        throw error;
+        return { data: null, error };
       }
       
-      return data || [];
+      // Map the DB response to our Guest type
+      const guests: Guest[] = (data || []).map((item: any) => ({
+        id: item.id,
+        albumId: item.albumId,
+        guestName: item.guestName,
+        email: item.email || undefined,
+        phone: item.phone || undefined,
+        approved: item.approved,
+        created_at: item.created_at
+      }));
+      
+      return { data: guests, error: null };
     } catch (error) {
       console.error("Error in getAllGuestsForAlbum:", error);
-      return [];
+      return { data: null, error };
     }
   },
   
-  async addGuestToAlbum(albumId: string, guestData: { guestName: string, email?: string, phone?: string }): Promise<any> {
+  async addGuestToAlbum(albumId: string, guestData: { guestName: string, email?: string, phone?: string }): Promise<SingleGuestResponse> {
     console.log("Adding guest to album:", albumId, guestData);
     
     try {
@@ -346,13 +358,23 @@ export const supabaseService = {
       
       if (error) {
         console.error("Error adding guest:", error);
-        throw error;
+        return { data: null, error };
       }
       
-      return data;
+      const guest: Guest = {
+        id: data.id,
+        albumId: data.albumId,
+        guestName: data.guestName,
+        email: data.email || undefined,
+        phone: data.phone || undefined,
+        approved: data.approved,
+        created_at: data.created_at
+      };
+      
+      return { data: guest, error: null };
     } catch (error) {
       console.error("Error in addGuestToAlbum:", error);
-      throw error;
+      return { data: null, error };
     }
   },
   

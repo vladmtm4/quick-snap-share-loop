@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -7,16 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { supabaseService } from '@/lib/supabase-service';
 import { useLanguage } from '@/lib/i18n';
-
-// Define a Guest type to ensure proper typings
-interface Guest {
-  id: string;
-  albumId: string;
-  guestName: string;
-  email?: string;
-  phone?: string;
-  approved?: boolean;
-}
+import { Guest } from '@/types';
 
 interface FindGuestGameProps {
   albumId: string;
@@ -46,16 +36,7 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
           throw new Error(error.message);
         }
         
-        // Convert data to proper Guest type
-        const guestsList: Guest[] = data.map((item: any) => ({
-          id: item.id,
-          albumId: item.albumId,
-          guestName: item.guestName || '',
-          email: item.email || '',
-          phone: item.phone || '',
-          approved: item.approved
-        }));
-        
+        const guestsList = data || [];
         setGuestData(guestsList);
         pickRandomGuest(guestsList);
       } catch (err) {
@@ -77,11 +58,9 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
       return;
     }
     
-    // Filter out already found guests if possible
     const notFoundGuests = approvedGuests.filter(g => !allFoundGuests[g.id]);
     
     if (notFoundGuests.length === 0) {
-      // All guests have been found, reset or end game
       setAllFoundGuests({});
       setRandomGuest(approvedGuests[Math.floor(Math.random() * approvedGuests.length)]);
     } else {
@@ -93,12 +72,10 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
     setSelectedGuest(guest);
     
     if (randomGuest && guest.id === randomGuest.id) {
-      // Correct guess
       const newFoundGuests = { ...allFoundGuests, [guest.id]: true };
       setAllFoundGuests(newFoundGuests);
       setScore(score + 1);
       
-      // Pick next guest
       pickRandomGuest(guestData);
     }
   };

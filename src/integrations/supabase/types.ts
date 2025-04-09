@@ -42,6 +42,44 @@ export type Database = {
         }
         Relationships: []
       }
+      guests: {
+        Row: {
+          albumid: string
+          approved: boolean | null
+          created_at: string | null
+          email: string | null
+          guestname: string
+          id: string
+          phone: string | null
+        }
+        Insert: {
+          albumid: string
+          approved?: boolean | null
+          created_at?: string | null
+          email?: string | null
+          guestname: string
+          id?: string
+          phone?: string | null
+        }
+        Update: {
+          albumid?: string
+          approved?: boolean | null
+          created_at?: string | null
+          email?: string | null
+          guestname?: string
+          id?: string
+          phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guests_albumid_fkey"
+            columns: ["albumid"]
+            isOneToOne: false
+            referencedRelation: "albums"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       photos: {
         Row: {
           album_id: string
