@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { guestService } from '@/lib/guest-service';
 import { useLanguage } from '@/lib/i18n';
 import { Guest } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
-import { ChevronsRight, Camera, UserSearch, UserRound, RefreshCw, Check } from 'lucide-react';
+import { ChevronsRight, Camera, UserSearch, UserRound, RefreshCw, Check, MousePointer } from 'lucide-react';
 
 interface FindGuestGameProps {
   albumId: string;
@@ -28,6 +29,7 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(true);
   const [changingGuest, setChangingGuest] = useState(false);
+  const [guestAssigned, setGuestAssigned] = useState(false);
   const [error, setError] = useState('');
   
   useEffect(() => {
@@ -71,13 +73,14 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
       
       if (error) {
         console.error("Error checking for previous assignment:", error);
-        getOrAssignRandomGuest(true);
+        setGuestAssigned(false);
         return;
       }
       
       // If we found a previously assigned guest, use it
       if (assignedGuest) {
         setRandomGuest(assignedGuest);
+        setGuestAssigned(true);
         console.log("Found previously assigned guest:", assignedGuest);
         
         toast({
@@ -85,12 +88,11 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
           description: `You are assigned to find ${assignedGuest.guestName}!`,
         });
       } else {
-        // Otherwise get a new assignment
-        getOrAssignRandomGuest(true);
+        setGuestAssigned(false);
       }
     } catch (err) {
       console.error("Error in checkForPreviousAssignment:", err);
-      getOrAssignRandomGuest(true);
+      setGuestAssigned(false);
     }
   };
   
@@ -126,6 +128,7 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
         // Store the assignment so it persists between sessions
         guestService.storeGuestAssignment(albumId, guest.id);
         setRandomGuest(guest);
+        setGuestAssigned(true);
         
         toast({
           title: "New Guest Assigned",
@@ -180,6 +183,7 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   };
   
   const handleThisIsMe = async () => {
+    setGuestAssigned(true);
     // This will confirm the current guest assignment
     toast({
       title: "Confirmed!",
@@ -190,6 +194,18 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   const handleTakePhoto = () => {
     if (randomGuest) {
       navigate(`/upload/${albumId}?gameMode=true&assignment=${randomGuest.guestName}`);
+    }
+  };
+  
+  const handleClickHere = async () => {
+    // Only get a new guest if one isn't already assigned
+    if (!guestAssigned) {
+      await getOrAssignRandomGuest(false);
+    } else {
+      toast({
+        title: "Guest Already Assigned",
+        description: "You already have a guest assigned. Click 'This is me' to confirm or 'This isn't me' to get a new guest.",
+      });
     }
   };
   
@@ -228,7 +244,18 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
               <CardDescription>Find this guest in the event:</CardDescription>
             </CardHeader>
             <CardContent>
-              {randomGuest ? (
+              {!guestAssigned ? (
+                <div className="text-center">
+                  <h3 className="text-2xl font-bold mb-6">Click here to get your guest!</h3>
+                  <Button 
+                    onClick={handleClickHere}
+                    className="bg-brand-blue hover:bg-brand-darkBlue py-6 px-8 text-lg"
+                  >
+                    <MousePointer className="mr-2 h-5 w-5" />
+                    Click Here
+                  </Button>
+                </div>
+              ) : randomGuest ? (
                 <div className="text-center">
                   <h3 className="text-2xl font-bold mb-4">{randomGuest.guestName}</h3>
                   
