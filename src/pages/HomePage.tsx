@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { supabaseService } from "@/lib/supabase-service";
 import { Album } from "@/types";
+import { useAuth } from "@/lib/auth-context";
 
 const HomePage: React.FC = () => {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user, isAdmin } = useAuth();
   
   useEffect(() => {
     async function loadAlbums() {
@@ -26,8 +28,10 @@ const HomePage: React.FC = () => {
       }
     }
     
-    loadAlbums();
-  }, []);
+    if (user) {
+      loadAlbums();
+    }
+  }, [user]);
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -40,6 +44,16 @@ const HomePage: React.FC = () => {
             Create shared photo albums that everyone can contribute to
           </p>
         </div>
+        
+        {isAdmin && (
+          <div className="mb-4 text-center">
+            <Link to="/admin">
+              <Button variant="outline">
+                Go to Admin Dashboard
+              </Button>
+            </Link>
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-4">

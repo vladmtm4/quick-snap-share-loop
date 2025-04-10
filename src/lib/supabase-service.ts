@@ -10,11 +10,36 @@ type PhotosRow = Database['public']['Tables']['photos']['Row'];
 export const supabaseService = {
   // Album methods
   async getAllAlbums(): Promise<Album[]> {
-    console.log("Fetching all albums");
-    const { data, error } = await supabase
+    console.log("Fetching albums for authenticated user");
+    
+    // Get the current user
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    
+    if (!userId) {
+      console.error("No authenticated user found");
+      return [];
+    }
+    
+    // First, check if the user is an admin
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', userId)
+      .single();
+      
+    const isAdmin = profileData?.is_admin || false;
+    
+    let query = supabase
       .from('albums')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select('*');
+      
+    // If not admin, only show albums owned by the current user
+    if (!isAdmin) {
+      query = query.eq('user_id', userId);
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
     
     if (error) {
       console.error('Error fetching albums:', error);
@@ -29,7 +54,7 @@ export const supabaseService = {
       createdAt: album.created_at || '',
       moderationEnabled: album.moderation_enabled || false,
       isPrivate: album.is_private || false,
-      ownerId: album.owner_id || undefined,
+      ownerId: album.owner_id || album.user_id || undefined,
       guest_list: album.guest_list || undefined
     }));
   },
@@ -43,6 +68,14 @@ export const supabaseService = {
   }): Promise<Album> {
     console.log("Creating album with data:", albumData);
     
+    // Get the current user
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    
+    if (!userId) {
+      throw new Error("You must be logged in to create an album");
+    }
+    
     // Create a new object with the data to insert
     const newAlbum = {
       title: albumData.title,
@@ -50,7 +83,8 @@ export const supabaseService = {
       is_private: albumData.isPrivate || false,
       moderation_enabled: albumData.moderationEnabled || false,
       guest_list: albumData.guest_list || null,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      user_id: userId
     };
     
     console.log("Inserting album:", newAlbum);
@@ -80,7 +114,7 @@ export const supabaseService = {
       createdAt: data.created_at || '',
       moderationEnabled: data.moderation_enabled || false,
       isPrivate: data.is_private || false,
-      ownerId: data.owner_id || undefined,
+      ownerId: data.owner_id || data.user_id || undefined,
       guest_list: data.guest_list || undefined
     };
   },
@@ -116,7 +150,7 @@ export const supabaseService = {
       createdAt: data.created_at || '',
       moderationEnabled: data.moderation_enabled || false,
       isPrivate: data.is_private || false,
-      ownerId: data.owner_id || undefined,
+      ownerId: data.owner_id || data.user_id || undefined,
       guest_list: data.guest_list || undefined
     };
     

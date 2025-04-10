@@ -19,6 +19,7 @@ export type Database = {
           moderation_enabled: boolean | null
           owner_id: string | null
           title: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -29,6 +30,7 @@ export type Database = {
           moderation_enabled?: boolean | null
           owner_id?: string | null
           title: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -39,6 +41,7 @@ export type Database = {
           moderation_enabled?: boolean | null
           owner_id?: string | null
           title?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -129,6 +132,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string
+          id: string
+          is_admin: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email: string
+          id: string
+          is_admin?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          id?: string
+          is_admin?: boolean
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
