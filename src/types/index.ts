@@ -1,4 +1,3 @@
-
 export interface Album {
   id: string;
   title: string;
@@ -8,6 +7,8 @@ export interface Album {
   isPrivate: boolean;
   ownerId?: string;
   guest_list?: string[]; // For the find-a-guest game
+  email?: string;
+  display_name?: string;
 }
 
 export interface Photo {
