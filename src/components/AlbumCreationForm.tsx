@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabaseService } from "@/lib/supabase-service";
 import { AlertCircle } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 const AlbumCreationForm: React.FC = () => {
   const [title, setTitle] = useState("");
@@ -20,6 +21,19 @@ const AlbumCreationForm: React.FC = () => {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to create an album",
+        variant: "destructive"
+      });
+      navigate('/auth');
+    }
+  }, [user, navigate, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +46,17 @@ const AlbumCreationForm: React.FC = () => {
         description: "Please enter an album title",
         variant: "destructive"
       });
+      return;
+    }
+
+    if (!user) {
+      setError("You must be signed in to create an album");
+      toast({
+        title: "Authentication required",
+        description: "You must be signed in to create an album",
+        variant: "destructive"
+      });
+      navigate('/auth');
       return;
     }
     
