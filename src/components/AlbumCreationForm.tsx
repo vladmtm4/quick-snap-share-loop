@@ -45,12 +45,20 @@ const AlbumCreationForm: React.FC = () => {
         moderationEnabled
       });
       
-      const newAlbum = await supabaseService.createAlbum({
+      const { data: newAlbum, error: createError } = await supabaseService.createAlbum({
         title,
         description: description.trim() ? description : undefined,
         isPrivate,
         moderationEnabled
       });
+      
+      if (createError) {
+        throw new Error(createError.message || "Failed to create album");
+      }
+      
+      if (!newAlbum) {
+        throw new Error("Album creation failed - no data returned");
+      }
       
       console.log("Album created successfully:", newAlbum);
       

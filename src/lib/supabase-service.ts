@@ -67,30 +67,33 @@ export const supabaseService = {
     isPrivate?: boolean;
     moderationEnabled?: boolean;
     guest_list?: string[];
-  }): Promise<Album> {
+  }): Promise<{ data: Album | null, error: Error | null }> {
     console.log("Creating album with data:", albumData);
     
-    // Get the current user
-    const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user?.id;
-    
-    if (!userId) {
-      throw new Error("You must be logged in to create an album");
-    }
-    
-    // Create a new object with the data to insert
-    const newAlbum = {
-      title: albumData.title,
-      description: albumData.description || null,
-      is_private: albumData.isPrivate || false,
-      moderation_enabled: albumData.moderationEnabled || false,
-      guest_list: albumData.guest_list || null,
-      user_id: userId
-    };
-    
-    console.log("Inserting album:", newAlbum);
-    
     try {
+      // Get the current user
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      
+      if (!userId) {
+        return {
+          data: null, 
+          error: new Error("You must be logged in to create an album")
+        };
+      }
+      
+      // Create a new object with the data to insert
+      const newAlbum = {
+        title: albumData.title,
+        description: albumData.description || null,
+        is_private: albumData.isPrivate || false,
+        moderation_enabled: albumData.moderationEnabled || false,
+        guest_list: albumData.guest_list || null,
+        user_id: userId
+      };
+      
+      console.log("Inserting album:", newAlbum);
+      
       const { data, error } = await supabase
         .from('albums')
         .insert(newAlbum)
@@ -99,17 +102,23 @@ export const supabaseService = {
       
       if (error) {
         console.error('Error creating album:', error);
-        throw new Error(error.message || 'Failed to create album');
+        return {
+          data: null,
+          error: new Error(error.message || 'Failed to create album')
+        };
       }
       
       if (!data) {
         console.error('No data returned after creating album');
-        throw new Error('Failed to create album - no data returned');
+        return {
+          data: null,
+          error: new Error('Failed to create album - no data returned')
+        };
       }
       
       console.log("Album created successfully:", data);
       
-      return {
+      const album: Album = {
         id: data.id,
         title: data.title,
         description: data.description || undefined,
@@ -119,9 +128,11 @@ export const supabaseService = {
         ownerId: data.user_id || undefined,
         guest_list: data.guest_list || undefined
       };
+      
+      return { data: album, error: null };
     } catch (error: any) {
       console.error('Error in album creation:', error);
-      throw error;
+      return { data: null, error };
     }
   },
   
