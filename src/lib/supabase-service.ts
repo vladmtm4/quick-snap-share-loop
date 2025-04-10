@@ -1,7 +1,9 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 import { Album, Photo, UploadResponse } from "@/types";
 import { Database } from "@/integrations/supabase/types";
+import { fetchProfile } from "@/types/supabase-types";
 
 // Type aliases for Supabase tables
 type AlbumsRow = Database['public']['Tables']['albums']['Row'];
@@ -22,11 +24,12 @@ export const supabaseService = {
     }
     
     // First, check if the user is an admin
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', userId)
-      .single();
+    const { data: profileData, error: profileError } = await fetchProfile(supabase, userId);
+    
+    if (profileError) {
+      console.error('Error fetching profile:', profileError);
+      return [];
+    }
       
     const isAdmin = profileData?.is_admin || false;
     
@@ -54,7 +57,7 @@ export const supabaseService = {
       createdAt: album.created_at || '',
       moderationEnabled: album.moderation_enabled || false,
       isPrivate: album.is_private || false,
-      ownerId: album.owner_id || album.user_id || undefined,
+      ownerId: album.user_id || undefined,
       guest_list: album.guest_list || undefined
     }));
   },
@@ -114,7 +117,7 @@ export const supabaseService = {
       createdAt: data.created_at || '',
       moderationEnabled: data.moderation_enabled || false,
       isPrivate: data.is_private || false,
-      ownerId: data.owner_id || data.user_id || undefined,
+      ownerId: data.user_id || undefined,
       guest_list: data.guest_list || undefined
     };
   },

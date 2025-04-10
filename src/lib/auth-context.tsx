@@ -1,8 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { toast } from "@/hooks/use-toast";
+import { fetchProfile } from "@/types/supabase-types";
 
 interface AuthContextProps {
   session: Session | null;
@@ -58,11 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchAdminStatus = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', userId)
-        .single();
+      const { data, error } = await fetchProfile(supabase, userId);
       
       if (error) {
         console.error('Error fetching admin status:', error);

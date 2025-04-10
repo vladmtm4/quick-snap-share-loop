@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Header from "@/components/Header";
@@ -8,24 +7,8 @@ import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-interface Profile {
-  id: string;
-  email: string;
-  display_name: string;
-  created_at: string;
-  is_admin: boolean;
-}
-
-interface Album {
-  id: string;
-  title: string;
-  description: string | null;
-  user_id: string;
-  created_at: string;
-  email?: string;
-  display_name?: string;
-}
+import { Album, Profile } from "@/types";
+import { fetchProfile } from "@/types/supabase-types";
 
 const AdminPage: React.FC = () => {
   const { isAdmin } = useAuth();
@@ -222,8 +205,8 @@ const AdminPage: React.FC = () => {
                         <TableRow key={album.id}>
                           <TableCell>{album.title}</TableCell>
                           <TableCell>{album.display_name || album.email || "Unknown"}</TableCell>
-                          <TableCell>{new Date(album.created_at).toLocaleString()}</TableCell>
-                          <TableCell>{album.is_private ? "Yes" : "No"}</TableCell>
+                          <TableCell>{new Date(album.createdAt).toLocaleString()}</TableCell>
+                          <TableCell>{album.isPrivate ? "Yes" : "No"}</TableCell>
                           <TableCell>
                             <Button 
                               variant="outline"

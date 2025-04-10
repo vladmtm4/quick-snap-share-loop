@@ -42,6 +42,15 @@ export interface Guest {
   photoUrl?: string; // Added photoUrl for guest photo
 }
 
+// Profile interface for admin page
+export interface Profile {
+  id: string;
+  email: string;
+  display_name: string | null;
+  created_at: string;
+  is_admin: boolean;
+}
+
 // Responses from supabase guest methods
 export interface GuestResponse {
   data: Guest[] | null;
