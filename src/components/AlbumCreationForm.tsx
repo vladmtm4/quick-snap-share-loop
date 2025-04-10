@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { supabaseService } from "@/lib/supabase-service";
+import { AlertCircle } from "lucide-react";
 
 const AlbumCreationForm: React.FC = () => {
   const [title, setTitle] = useState("");
@@ -15,14 +16,17 @@ const AlbumCreationForm: React.FC = () => {
   const [isPrivate, setIsPrivate] = useState(false);
   const [moderationEnabled, setModerationEnabled] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
     if (!title.trim()) {
+      setError("Please enter an album title");
       toast({
         title: "Error",
         description: "Please enter an album title",
@@ -60,17 +64,19 @@ const AlbumCreationForm: React.FC = () => {
         navigate(`/album/${newAlbum.id}`);
       } else {
         console.error("Cannot navigate: newAlbum or newAlbum.id is undefined", newAlbum);
+        setError("Album was created but there was an issue loading it");
         toast({
           title: "Warning",
           description: "Album was created but there was an issue loading it",
           variant: "destructive"
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating album:", error);
+      setError(error.message || "Failed to create album. Please try again.");
       toast({
         title: "Error",
-        description: "Failed to create album. Please try again.",
+        description: error.message || "Failed to create album. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -80,6 +86,13 @@ const AlbumCreationForm: React.FC = () => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-3 flex items-start">
+          <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+          <p>{error}</p>
+        </div>
+      )}
+      
       <div className="space-y-2">
         <Label htmlFor="title">Album Title*</Label>
         <Input

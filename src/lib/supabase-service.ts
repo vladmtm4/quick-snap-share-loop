@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 import { Album, Photo, UploadResponse } from "@/types";
@@ -86,40 +85,44 @@ export const supabaseService = {
       is_private: albumData.isPrivate || false,
       moderation_enabled: albumData.moderationEnabled || false,
       guest_list: albumData.guest_list || null,
-      created_at: new Date().toISOString(),
       user_id: userId
     };
     
     console.log("Inserting album:", newAlbum);
     
-    const { data, error } = await supabase
-      .from('albums')
-      .insert(newAlbum)
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Error creating album:', error);
-      throw new Error(error?.message || 'Failed to create album');
+    try {
+      const { data, error } = await supabase
+        .from('albums')
+        .insert(newAlbum)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error creating album:', error);
+        throw new Error(error.message || 'Failed to create album');
+      }
+      
+      if (!data) {
+        console.error('No data returned after creating album');
+        throw new Error('Failed to create album - no data returned');
+      }
+      
+      console.log("Album created successfully:", data);
+      
+      return {
+        id: data.id,
+        title: data.title,
+        description: data.description || undefined,
+        createdAt: data.created_at || '',
+        moderationEnabled: data.moderation_enabled || false,
+        isPrivate: data.is_private || false,
+        ownerId: data.user_id || undefined,
+        guest_list: data.guest_list || undefined
+      };
+    } catch (error: any) {
+      console.error('Error in album creation:', error);
+      throw error;
     }
-    
-    if (!data) {
-      console.error('No data returned after creating album');
-      throw new Error('Failed to create album - no data returned');
-    }
-    
-    console.log("Album created successfully:", data);
-    
-    return {
-      id: data.id,
-      title: data.title,
-      description: data.description || undefined,
-      createdAt: data.created_at || '',
-      moderationEnabled: data.moderation_enabled || false,
-      isPrivate: data.is_private || false,
-      ownerId: data.user_id || undefined,
-      guest_list: data.guest_list || undefined
-    };
   },
   
   async getAlbumById(id: string): Promise<Album | null> {
