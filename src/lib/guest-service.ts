@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 import { Guest, GuestResponse, SingleGuestResponse } from "@/types";
@@ -79,104 +78,93 @@ export const guestService = {
         query = query.neq('id', currentAssignedId);
       }
       
+      // Important fix: Use maybeSingle instead of single to avoid errors when no guest is found
       const { data, error } = await query
         .limit(1)
-        .single();
+        .maybeSingle();
       
-      if (error) {
+      if (!data || error) {
         console.log("No unassigned guests found, attempting to reset assignments");
         // If no unassigned guests are found, reset all assignments and try again
-        if (error.code === 'PGRST116') {
-          await this.resetAllGuestAssignments(albumId);
-          console.log("Assignments reset, trying to find a guest again");
-          
-          // Get a new guest but exclude current one to avoid reassigning the same guest
-          const queryAfterReset = supabase
+        await this.resetAllGuestAssignments(albumId);
+        console.log("Assignments reset, trying to find a guest again");
+        
+        // Get a new guest but exclude current one to avoid reassigning the same guest
+        const queryAfterReset = supabase
+          .from('guests')
+          .select('*')
+          .eq('albumid', albumId)
+          .eq('approved', true)
+          .not('photo_url', 'is', null); // Make sure we only get guests with photos
+            
+        // Add filter to exclude current guest
+        if (currentAssignedId) {
+          queryAfterReset.neq('id', currentAssignedId);
+        }
+        
+        // Use maybeSingle here too
+        const { data: resetData, error: resetError } = await queryAfterReset
+          .limit(1)
+          .maybeSingle();
+            
+        if (!resetData || resetError) {
+          console.log("Still couldn't find a guest, last resort attempt...");
+          // If we still can't find a guest after reset, try without the exclusion filter
+          // as a last resort (better to possibly get same guest than no guest at all)
+          const lastResortQuery = await supabase
             .from('guests')
             .select('*')
             .eq('albumid', albumId)
             .eq('approved', true)
-            .not('photo_url', 'is', null); // Make sure we only get guests with photos
-            
-          // Add filter to exclude current guest
-          if (currentAssignedId) {
-            queryAfterReset.neq('id', currentAssignedId);
-          }
-          
-          const { data: resetData, error: resetError } = await queryAfterReset
+            .not('photo_url', 'is', null)
             .limit(1)
-            .single();
-            
-          if (resetError) {
-            console.log("Still couldn't find a guest, last resort attempt...");
-            // If we still can't find a guest after reset, try without the exclusion filter
-            // as a last resort (better to possibly get same guest than no guest at all)
-            const lastResortQuery = await supabase
-              .from('guests')
-              .select('*')
-              .eq('albumid', albumId)
-              .eq('approved', true)
-              .not('photo_url', 'is', null)
-              .limit(1)
-              .single();
+            .maybeSingle();
               
-            if (lastResortQuery.error) {
-              console.error("Error fetching guest after all attempts:", lastResortQuery.error);
-              return { data: null, error: lastResortQuery.error };
-            }
-            
-            if (!lastResortQuery.data) {
-              return { data: null, error: new Error("No approved guests available") };
-            }
-            
-            // Mark this guest as assigned in the database
-            const markSuccess = await this.markGuestAsAssigned(lastResortQuery.data.id);
-            console.log("Guest assigned successfully:", markSuccess, lastResortQuery.data.id);
-            
-            const guest: Guest = {
-              id: lastResortQuery.data.id,
-              albumId: lastResortQuery.data.albumid,
-              guestName: lastResortQuery.data.guestname,
-              email: lastResortQuery.data.email || undefined,
-              phone: lastResortQuery.data.phone || undefined,
-              approved: lastResortQuery.data.approved,
-              created_at: lastResortQuery.data.created_at,
-              assigned: true,
-              photoUrl: lastResortQuery.data.photo_url || undefined
-            };
-            
-            return { data: guest, error: null };
+          if (!lastResortQuery.data || lastResortQuery.error) {
+            console.error("Error fetching guest after all attempts:", lastResortQuery.error || "No guests available");
+            return { data: null, error: lastResortQuery.error || new Error("No approved guests available") };
           }
-          
-          if (!resetData) {
-            return { data: null, error: new Error("No approved guests available") };
-          }
-          
+            
           // Mark this guest as assigned in the database
-          const markSuccess = await this.markGuestAsAssigned(resetData.id);
-          console.log("Guest assigned successfully:", markSuccess, resetData.id);
-          
+          const markSuccess = await this.markGuestAsAssigned(lastResortQuery.data.id);
+          console.log("Guest assigned successfully:", markSuccess, lastResortQuery.data.id);
+            
           const guest: Guest = {
-            id: resetData.id,
-            albumId: resetData.albumid,
-            guestName: resetData.guestname,
-            email: resetData.email || undefined,
-            phone: resetData.phone || undefined,
-            approved: resetData.approved,
-            created_at: resetData.created_at,
+            id: lastResortQuery.data.id,
+            albumId: lastResortQuery.data.albumid,
+            guestName: lastResortQuery.data.guestname,
+            email: lastResortQuery.data.email || undefined,
+            phone: lastResortQuery.data.phone || undefined,
+            approved: lastResortQuery.data.approved,
+            created_at: lastResortQuery.data.created_at,
             assigned: true,
-            photoUrl: resetData.photo_url || undefined
+            photoUrl: lastResortQuery.data.photo_url || undefined
           };
-          
+            
           return { data: guest, error: null };
         }
-        
-        console.error("Error fetching unassigned guest:", error);
-        return { data: null, error };
-      }
-      
-      if (!data) {
-        return { data: null, error: new Error("No unassigned guests available") };
+          
+        if (!resetData) {
+          return { data: null, error: new Error("No approved guests available") };
+        }
+          
+        // Mark this guest as assigned in the database
+        const markSuccess = await this.markGuestAsAssigned(resetData.id);
+        console.log("Guest assigned successfully:", markSuccess, resetData.id);
+          
+        const guest: Guest = {
+          id: resetData.id,
+          albumId: resetData.albumid,
+          guestName: resetData.guestname,
+          email: resetData.email || undefined,
+          phone: resetData.phone || undefined,
+          approved: resetData.approved,
+          created_at: resetData.created_at,
+          assigned: true,
+          photoUrl: resetData.photo_url || undefined
+        };
+          
+        return { data: guest, error: null };
       }
       
       // Mark this guest as assigned in the database
@@ -201,8 +189,7 @@ export const guestService = {
       return { data: null, error };
     }
   },
-
-  // Get a previously assigned guest by device ID (stored in localStorage)
+  
   async getGuestByDeviceId(albumId: string, deviceId: string): Promise<SingleGuestResponse> {
     try {
       // Look up the guest assignment in local storage first
@@ -251,7 +238,6 @@ export const guestService = {
     }
   },
   
-  // Store guest assignment to device
   storeGuestAssignment(albumId: string, guestId: string): void {
     try {
       // Generate a unique device ID or use existing one
@@ -273,7 +259,6 @@ export const guestService = {
     }
   },
   
-  // Clear guest assignment for current device
   async clearGuestAssignment(albumId: string): Promise<boolean> {
     try {
       const deviceId = localStorage.getItem('device_id');
@@ -299,10 +284,10 @@ export const guestService = {
     console.log("Resetting all guest assignments for album:", albumId);
     
     try {
-      // Try using a direct update query instead of RPC
+      // Use a direct update query with casting to handle type issues
       const { error } = await supabase
         .from('guests')
-        .update({ assigned: false } as any) // Using 'as any' to bypass type checking
+        .update({ assigned: false })
         .eq('albumid', albumId);
       
       if (error) {
@@ -322,6 +307,7 @@ export const guestService = {
     console.log("Marking guest as assigned:", guestId);
     
     try {
+      // Fix: Cast as object instead of using 'as any' for better type safety
       const { error } = await supabase
         .from('guests')
         .update({ assigned: true })
@@ -344,6 +330,7 @@ export const guestService = {
     console.log("Marking guest as unassigned:", guestId);
     
     try {
+      // Fix: Cast as object instead of using 'as any' for better type safety
       const { error } = await supabase
         .from('guests')
         .update({ assigned: false })

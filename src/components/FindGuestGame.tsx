@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -30,9 +29,7 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [changingGuest, setChangingGuest] = useState(false);
   const [guestAssigned, setGuestAssigned] = useState(false);
-  // Track if the user has rejected a guest because it was themselves
   const [hasRejectedSelf, setHasRejectedSelf] = useState(false);
-  // Track if the user has accepted the challenge
   const [challengeAccepted, setChallengeAccepted] = useState(false);
   const [error, setError] = useState('');
   
@@ -49,7 +46,6 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
         const guestsList = data || [];
         setGuestData(guestsList);
         
-        // Check if we have a previously assigned guest
         checkForPreviousAssignment();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load guests');
@@ -63,7 +59,6 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   
   const checkForPreviousAssignment = async () => {
     try {
-      // Get device ID from localStorage or create one
       let deviceId = localStorage.getItem('device_id');
       if (!deviceId) {
         deviceId = crypto.randomUUID();
@@ -72,7 +67,6 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
       
       console.log("Checking for previously assigned guest with device ID:", deviceId);
       
-      // Try to get previously assigned guest
       const { data: assignedGuest, error } = await guestService.getGuestByDeviceId(albumId, deviceId);
       
       if (error) {
@@ -81,17 +75,14 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
         return;
       }
       
-      // If we found a previously assigned guest, use it
       if (assignedGuest) {
         setRandomGuest(assignedGuest);
         setGuestAssigned(true);
         console.log("Found previously assigned guest:", assignedGuest);
         
-        // Check if user has already rejected themselves
         const hasRejected = localStorage.getItem(`rejected_self_${albumId}`) === 'true';
         setHasRejectedSelf(hasRejected);
         
-        // Check if user has already accepted the challenge
         const hasAccepted = localStorage.getItem(`accepted_challenge_${albumId}`) === 'true';
         setChallengeAccepted(hasAccepted);
         
@@ -123,17 +114,16 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
         setLoading(true);
       }
       
-      // If forceNew is true, first clear the current assignment
       if (forceNew && randomGuest) {
         console.log("Force new guest requested, clearing current assignment");
         await guestService.clearGuestAssignment(albumId);
       }
       
-      // Try to get an unassigned guest
       console.log("Getting unassigned guest");
       const { data: guest, error } = await guestService.getUnassignedGuest(albumId);
       
       if (error) {
+        console.error("Error getting unassigned guest:", error);
         toast({
           title: "Error",
           description: "Failed to assign a guest. Please try again.",
@@ -144,7 +134,6 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
       
       if (guest) {
         console.log("Got unassigned guest:", guest);
-        // Store the assignment so it persists between sessions
         guestService.storeGuestAssignment(albumId, guest.id);
         setRandomGuest(guest);
         setGuestAssigned(true);
@@ -154,9 +143,10 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
           description: `Find ${guest.guestName} and take a photo together!`,
         });
       } else {
+        console.log("No guests available to assign");
         toast({
           title: "No Guests Available",
-          description: "There are no guests available to assign right now.",
+          description: "There are no guests with photos available to assign right now.",
           variant: "destructive"
         });
       }
@@ -192,12 +182,9 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
     setHasRejectedSelf(false);
     setChallengeAccepted(false);
     
-    // Clear the stored rejection flag
     localStorage.removeItem(`rejected_self_${albumId}`);
-    // Clear the stored acceptance flag
     localStorage.removeItem(`accepted_challenge_${albumId}`);
     
-    // Clear the stored assignment for this album
     localStorage.removeItem(`album_${albumId}_device_${localStorage.getItem('device_id')}`);
     
     await guestService.resetAllGuestAssignments(albumId);
@@ -205,7 +192,6 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   };
   
   const handleChangeGuest = async () => {
-    // Mark that the user has rejected this guest (assuming it was themselves)
     setHasRejectedSelf(true);
     localStorage.setItem(`rejected_self_${albumId}`, 'true');
     
@@ -215,7 +201,6 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   const handleAcceptChallenge = async () => {
     setChallengeAccepted(true);
     localStorage.setItem(`accepted_challenge_${albumId}`, 'true');
-    // This will confirm the current guest assignment
     toast({
       title: "Challenge Accepted!",
       description: `Find ${randomGuest?.guestName} and take an awesome photo together!`,
@@ -229,7 +214,6 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   };
   
   const handleClickHere = async () => {
-    // Only get a new guest if one isn't already assigned
     if (!guestAssigned) {
       await getOrAssignRandomGuest(false);
     } else {
@@ -252,20 +236,17 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
     );
   }
   
-  // Restrict non-admin users to only "find" mode
-  const isAdmin = false; // Guest users are never admin
-
+  const isAdmin = false;
+  
   return (
     <div className="space-y-4">
-      <Tabs defaultValue="find" onValueChange={(value) => isAdmin && setGameMode(value as 'find' | 'list')}>
+      <Tabs defaultValue="find" onValueChange={(value) => setGameMode(value as 'find' | 'list')}>
         <TabsList className="w-full">
           <TabsTrigger value="find" className="flex-1">
             <UserSearch className="mr-2 h-4 w-4" />
             Find a Guest
           </TabsTrigger>
-          {isAdmin && (
-            <TabsTrigger value="list" className="flex-1">Guest List</TabsTrigger>
-          )}
+          <TabsTrigger value="list" disabled className="flex-1">Guest List</TabsTrigger>
         </TabsList>
         
         <TabsContent value="find" className="space-y-4 pt-2">
@@ -305,7 +286,6 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
                   )}
                   
                   {challengeAccepted ? (
-                    // When challenge is accepted, only show the Take Photo button
                     <div className="flex justify-center">
                       <Button 
                         onClick={handleTakePhoto} 
@@ -316,9 +296,7 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
                       </Button>
                     </div>
                   ) : (
-                    // Before accepting, show the standard buttons
                     <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-                      {/* Only show Change Guest button if user hasn't rejected a guest yet */}
                       {!hasRejectedSelf && (
                         <Button 
                           onClick={handleChangeGuest} 
@@ -331,7 +309,6 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
                         </Button>
                       )}
                       
-                      {/* Auto-accept after rejecting self, or show accept button */}
                       {hasRejectedSelf ? (
                         <Button 
                           onClick={handleTakePhoto} 
@@ -360,16 +337,14 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
                         </>
                       )}
                       
-                      {isAdmin && (
-                        <Button 
-                          onClick={handleResetGame} 
-                          variant="outline" 
-                          className="sm:flex-1"
-                        >
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                          Reset Game
-                        </Button>
-                      )}
+                      <Button 
+                        onClick={handleResetGame} 
+                        variant="outline" 
+                        className="sm:flex-1"
+                      >
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Reset Game
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -381,28 +356,6 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
             </CardContent>
           </Card>
         </TabsContent>
-        
-        {isAdmin && (
-          <TabsContent value="list">
-            <div className="grid gap-2">
-              {guestData.filter(g => g.approved !== false).map(guest => (
-                <Button 
-                  key={guest.id}
-                  variant={selectedGuest?.id === guest.id ? "default" : "outline"}
-                  className="justify-between w-full"
-                  onClick={() => handleGuestSelected(guest)}
-                >
-                  <span>{guest.guestName}</span>
-                  {allFoundGuests[guest.id] && <Badge>Found</Badge>}
-                </Button>
-              ))}
-              
-              {guestData.length === 0 && !loading && (
-                <p className="text-center py-4 text-muted-foreground">No guests in this album yet</p>
-              )}
-            </div>
-          </TabsContent>
-        )}
       </Tabs>
       
       <div className="flex justify-between">
