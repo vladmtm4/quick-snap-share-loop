@@ -19,19 +19,18 @@ const AuthPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionChecked, setSessionChecked] = useState(false);
+  const [redirectionAttempted, setRedirectionAttempted] = useState(false);
 
   // Redirect if user is already authenticated
   useEffect(() => {
-    // Only perform redirect if we're sure about the authentication state
-    if (!authLoading) {
-      if (user) {
-        console.log("User is already authenticated, redirecting to:", from);
-        navigate(from, { replace: true });
-      }
-      setSessionChecked(true);
+    console.log("AuthPage: User state updated", { user, authLoading, redirectionAttempted });
+    
+    if (!authLoading && user && !redirectionAttempted) {
+      console.log("User is already authenticated, redirecting to:", from);
+      setRedirectionAttempted(true);
+      navigate(from, { replace: true });
     }
-  }, [user, navigate, from, authLoading]);
+  }, [user, authLoading, navigate, from, redirectionAttempted]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +38,7 @@ const AuthPage: React.FC = () => {
     try {
       const { error } = await signIn(email, password);
       if (!error) {
-        navigate(from, { replace: true });
+        // Navigation will be handled by the useEffect
       }
     } finally {
       setIsLoading(false);
@@ -57,7 +56,7 @@ const AuthPage: React.FC = () => {
   };
 
   // Show loading indicator while checking session
-  if (authLoading || !sessionChecked) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -66,6 +65,13 @@ const AuthPage: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  // If the user is authenticated but redirection failed, force it again
+  if (user && !redirectionAttempted) {
+    console.log("User authenticated but redirection not attempted. Redirecting now...");
+    navigate(from, { replace: true });
+    return null;
   }
 
   return (

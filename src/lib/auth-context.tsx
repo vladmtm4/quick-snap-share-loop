@@ -45,36 +45,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log("AuthProvider: Initializing...");
     setIsLoading(true);
     
-    // First, set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        console.log("Auth state changed:", event, Boolean(currentSession));
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-        
-        // Fetch admin status if user is logged in
-        if (currentSession?.user) {
-          await fetchAdminStatus(currentSession.user.id);
-        } else {
-          setIsAdmin(false);
-        }
-      }
-    );
+    let authStateSubscription: { unsubscribe: () => void } | null = null;
 
-    // Then check for existing session
-    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
-      console.log("Current session check:", Boolean(currentSession));
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      
-      if (currentSession?.user) {
-        await fetchAdminStatus(currentSession.user.id);
+    const initialize = async () => {
+      try {
+        // First check for existing session
+        const { data: sessionData } = await supabase.auth.getSession();
+        console.log("Current session check:", Boolean(sessionData.session));
+        
+        if (sessionData.session) {
+          setSession(sessionData.session);
+          setUser(sessionData.session.user);
+          
+          // Fetch admin status if user is logged in
+          await fetchAdminStatus(sessionData.session.user.id);
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
+      } finally {
+        // Now setup auth state listener after initial session check
+        authStateSubscription = supabase.auth.onAuthStateChange(
+          async (event, currentSession) => {
+            console.log("Auth state changed:", event, Boolean(currentSession));
+            
+            setSession(currentSession);
+            setUser(currentSession?.user ?? null);
+            
+            // Fetch admin status if user is logged in
+            if (currentSession?.user) {
+              await fetchAdminStatus(currentSession.user.id);
+            } else {
+              setIsAdmin(false);
+            }
+          }
+        ).data.subscription;
+        
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    });
+    };
+
+    initialize();
 
     return () => {
-      subscription.unsubscribe();
+      if (authStateSubscription) {
+        authStateSubscription.unsubscribe();
+      }
     };
   }, []);
 
