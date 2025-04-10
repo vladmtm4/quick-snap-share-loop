@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Header from "@/components/Header";
+import { Loader2 } from "lucide-react";
 
 const AuthPage: React.FC = () => {
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as any)?.from?.pathname || "/";
@@ -18,13 +19,19 @@ const AuthPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   // Redirect if user is already authenticated
-  React.useEffect(() => {
-    if (user) {
-      navigate(from, { replace: true });
+  useEffect(() => {
+    // Only perform redirect if we're sure about the authentication state
+    if (!authLoading) {
+      if (user) {
+        console.log("User is already authenticated, redirecting to:", from);
+        navigate(from, { replace: true });
+      }
+      setSessionChecked(true);
     }
-  }, [user, navigate, from]);
+  }, [user, navigate, from, authLoading]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +55,18 @@ const AuthPage: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // Show loading indicator while checking session
+  if (authLoading || !sessionChecked) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="mt-2 text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
