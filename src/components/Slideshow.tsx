@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Play, Pause } from "lucide-react";
@@ -22,7 +23,14 @@ const Slideshow: React.FC<SlideshowProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const prevPhotoCount = useRef(photos.length);
+  const photosRef = useRef(photos);
   const navigate = useNavigate();
+  
+  // Update the ref when photos change
+  useEffect(() => {
+    photosRef.current = photos;
+    console.log(`Slideshow photos updated: ${photos.length} photos available`);
+  }, [photos]);
   
   // Add logging when photos prop changes
   useEffect(() => {
@@ -62,9 +70,9 @@ const Slideshow: React.FC<SlideshowProps> = ({
   };
   
   const goToNextSlide = useCallback(() => {
-    if (photos.length === 0) return;
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % photos.length);
-  }, [photos.length]);
+    if (photosRef.current.length === 0) return;
+    setCurrentIndex((prevIndex) => (prevIndex + 1) % photosRef.current.length);
+  }, []);
   
   // Handle auto-advancing slides when playing
   useEffect(() => {

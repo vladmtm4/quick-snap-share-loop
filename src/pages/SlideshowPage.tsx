@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Slideshow from "@/components/Slideshow";
@@ -47,7 +48,6 @@ const SlideshowPage: React.FC = () => {
       const approvedPhotos = await supabaseService.getApprovedPhotosByAlbumId(albumId);
       console.log("Approved photos loaded:", approvedPhotos.length);
       setPhotos(approvedPhotos);
-      setPhotosUpdated(prevCount => prevCount + 1); // Increment update counter
     } catch (error) {
       console.error("Error loading photos:", error);
     } finally {
@@ -139,15 +139,8 @@ const SlideshowPage: React.FC = () => {
     // Log subscription success
     console.log("Real-time subscription activated for album:", albumId);
     
-    // Refresh photos every 30 seconds as a backup mechanism
-    const refreshInterval = setInterval(() => {
-      console.log("Periodic refresh of photos");
-      loadPhotos();
-    }, 30000);
-    
     return () => {
-      console.log("Cleaning up real-time subscription and intervals");
-      clearInterval(refreshInterval);
+      console.log("Cleaning up real-time subscription");
       supabase.removeChannel(channel);
     };
   }, [albumId, loadPhotos, toast]);
