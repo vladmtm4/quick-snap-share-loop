@@ -1,62 +1,67 @@
 
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Home, X, LogOut, User, Shield } from "lucide-react";
-import LanguageSelector from "./LanguageSelector";
-import { useLanguage } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-context";
+import LanguageSelector from "@/components/LanguageSelector";
+import { useLanguage } from "@/lib/i18n";
+import { ArrowLeft, LogIn, LogOut } from "lucide-react";
 
 interface HeaderProps {
   showBackButton?: boolean;
+  hideAuthButtons?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ showBackButton = false }) => {
+const Header: React.FC<HeaderProps> = ({ showBackButton = false, hideAuthButtons = false }) => {
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const { translate } = useLanguage();
-  const { user, isAdmin, signOut } = useAuth();
-
+  
+  const goBack = () => {
+    navigate(-1);
+  };
+  
   return (
-    <header className="flex items-center justify-between p-4 bg-white shadow-sm">
-      <div className="flex items-center">
-        {showBackButton ? (
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/">
-              <Home className="h-5 w-5" />
-            </Link>
-          </Button>
-        ) : (
-          <Link to="/" className="text-xl font-bold text-brand-blue">
-            {translate("appName")}
-          </Link>
-        )}
-      </div>
-      
-      <div className="flex items-center gap-3">
-        <LanguageSelector />
-        
-        {user ? (
-          <div className="flex items-center gap-2">
-            {isAdmin && (
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/admin">
-                  <Shield className="h-4 w-4 mr-1" />
-                  Admin
-                </Link>
-              </Button>
-            )}
-            <Button variant="ghost" size="sm" onClick={signOut}>
-              <LogOut className="h-4 w-4 mr-1" />
-              Sign Out
+    <header className="bg-white shadow-sm">
+      <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="flex items-center">
+          {showBackButton && (
+            <Button variant="ghost" size="icon" onClick={goBack} className="mr-2">
+              <ArrowLeft className="h-5 w-5" />
             </Button>
-          </div>
-        ) : (
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/auth">
-              <User className="h-4 w-4 mr-1" />
-              Sign In
-            </Link>
-          </Button>
-        )}
+          )}
+          <Link to="/" className="text-xl font-semibold text-brand-blue">
+            PhotoShare
+          </Link>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <LanguageSelector />
+          
+          {!hideAuthButtons && (
+            user ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => signOut()}
+                className="flex items-center gap-1"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>{translate("signOut")}</span>
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/auth")}
+                className="flex items-center gap-1"
+              >
+                <LogIn className="h-4 w-4" />
+                <span>{translate("signIn")}</span>
+              </Button>
+            )
+          )}
+        </div>
       </div>
     </header>
   );

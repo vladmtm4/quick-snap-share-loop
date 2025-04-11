@@ -1,98 +1,67 @@
 
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { LanguageProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/lib/auth-context";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { LanguageProvider } from "@/lib/i18n/LanguageContext";
+
+// Pages
+import HomePage from "@/pages/HomePage";
+import AuthPage from "@/pages/AuthPage";
+import AlbumPage from "@/pages/AlbumPage";
+import SlideshowPage from "@/pages/SlideshowPage";
+import NotFound from "@/pages/NotFound";
+import UploadPage from "@/pages/UploadPage";
+import GuestManagerPage from "@/pages/GuestManagerPage";
+import AdminPage from "@/pages/AdminPage";
+import GamePage from "@/pages/GamePage";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
-import HomePage from "./pages/HomePage";
-import AlbumPage from "./pages/AlbumPage";
-import UploadPage from "./pages/UploadPage";
-import SlideshowPage from "./pages/SlideshowPage";
-import GamePage from "./pages/GamePage";
-import GuestManagerPage from "./pages/GuestManagerPage";
-import AuthPage from "./pages/AuthPage";
-import AdminPage from "./pages/AdminPage";
-import NotFound from "./pages/NotFound";
+// Create a client for React Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 10, // 10 minutes
+      retry: 1
+    }
+  }
+});
 
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <LanguageProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+          <Router>
             <Routes>
+              <Route path="/" element={<HomePage />} />
               <Route path="/auth" element={<AuthPage />} />
-              <Route 
-                path="/" 
-                element={
-                  <ProtectedRoute>
-                    <HomePage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/album/:albumId" 
-                element={
-                  <ProtectedRoute>
-                    <AlbumPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/upload/:albumId" 
-                element={
-                  <ProtectedRoute>
-                    <UploadPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/slideshow/:albumId" 
-                element={
-                  <ProtectedRoute>
-                    <SlideshowPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/game/:albumId" 
-                element={
-                  <ProtectedRoute>
-                    <GamePage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/guests/:albumId" 
-                element={
-                  <ProtectedRoute>
-                    <GuestManagerPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/admin" 
-                element={
-                  <ProtectedRoute requireAdmin={true}>
-                    <AdminPage />
-                  </ProtectedRoute>
-                } 
-              />
+              <Route path="/album/:albumId" element={<AlbumPage />} />
+              <Route path="/slideshow/:albumId" element={<SlideshowPage />} />
+              <Route path="/upload/:albumId" element={<UploadPage />} />
+              <Route path="/game/:albumId" element={<GamePage />} />
+              
+              {/* Protected routes that require authentication */}
+              <Route path="/admin" element={
+                <ProtectedRoute requireAdmin>
+                  <AdminPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/guests/:albumId" element={
+                <ProtectedRoute>
+                  <GuestManagerPage />
+                </ProtectedRoute>
+              } />
+              
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
+            <Toaster />
+          </Router>
         </LanguageProvider>
       </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+    </QueryClientProvider>
+  );
+}
 
 export default App;
