@@ -181,7 +181,7 @@ const SlideshowPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center">
         <div className="text-white mb-4">Loading slideshow...</div>
-        <Button variant="outline" onClick={handleGoBack}>
+        <Button variant="outline" onClick={handleGoBack} className="text-white border-white hover:bg-white/10">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Album
         </Button>

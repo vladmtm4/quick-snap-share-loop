@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Play, Pause } from "lucide-react";
@@ -23,7 +22,7 @@ const Slideshow: React.FC<SlideshowProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const prevPhotoCount = useRef(photos.length);
-  const photosRef = useRef(photos);
+  const photosRef = useRef<Photo[]>(photos);
   const navigate = useNavigate();
   
   // Update the ref when photos change
@@ -52,7 +51,7 @@ const Slideshow: React.FC<SlideshowProps> = ({
           console.log(`Maintaining current position at index ${currentIndex}`);
           // We keep the current index (no need to update it)
         }
-      } else {
+      } else if (photos.length < prevPhotoCount.current) {
         // If photos were removed, ensure current index is valid
         if (currentIndex >= photos.length && photos.length > 0) {
           console.log("Current index out of bounds after photos were removed, adjusting");
@@ -71,7 +70,12 @@ const Slideshow: React.FC<SlideshowProps> = ({
   
   const goToNextSlide = useCallback(() => {
     if (photosRef.current.length === 0) return;
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % photosRef.current.length);
+    
+    setCurrentIndex((prevIndex) => {
+      const newIndex = (prevIndex + 1) % photosRef.current.length;
+      console.log(`Moving to next slide: ${prevIndex} -> ${newIndex}`);
+      return newIndex;
+    });
   }, []);
   
   // Handle auto-advancing slides when playing
@@ -90,9 +94,9 @@ const Slideshow: React.FC<SlideshowProps> = ({
   
   if (photos.length === 0) {
     return (
-      <div className="photo-slideshow-container flex flex-col items-center justify-center p-4">
+      <div className="photo-slideshow-container flex flex-col items-center justify-center p-4 min-h-screen bg-black">
         <p className="text-white text-xl mb-4">No photos in this album yet.</p>
-        <Button onClick={goBack} variant="outline">
+        <Button onClick={goBack} variant="outline" className="text-white border-white hover:bg-white/10">
           Back to Album
         </Button>
       </div>
@@ -100,17 +104,23 @@ const Slideshow: React.FC<SlideshowProps> = ({
   }
   
   return (
-    <div className="photo-slideshow-container">
+    <div className="photo-slideshow-container min-h-screen bg-black relative">
       {photos.map((photo, index) => (
         <div 
           key={photo.id}
-          className={`photo-slide ${index === currentIndex ? 'active' : ''}`}
+          className={`photo-slide absolute inset-0 flex items-center justify-center transition-opacity duration-1000 ${
+            index === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
+          }`}
         >
-          <img src={photo.url} alt={`Slide ${index + 1}`} />
+          <img 
+            src={photo.url} 
+            alt={`Slide ${index + 1}`} 
+            className="max-h-screen max-w-full object-contain"
+          />
         </div>
       ))}
       
-      <div className="absolute top-4 left-4 z-10">
+      <div className="absolute top-4 left-4 z-20">
         <Button 
           variant="outline" 
           size="icon"
@@ -121,7 +131,7 @@ const Slideshow: React.FC<SlideshowProps> = ({
         </Button>
       </div>
       
-      <div className="absolute bottom-4 right-4 z-10">
+      <div className="absolute bottom-4 right-4 z-20">
         <Button
           variant="outline"
           size="icon"
@@ -137,8 +147,8 @@ const Slideshow: React.FC<SlideshowProps> = ({
       </div>
       
       {photos.length > 0 && (
-        <div className="absolute bottom-4 left-0 right-0 mx-auto text-center">
-          <span className="bg-black/50 text-white px-2 py-1 rounded-md text-sm">
+        <div className="absolute bottom-4 left-0 right-0 mx-auto text-center z-20">
+          <span className="bg-black/50 text-white px-3 py-1.5 rounded-md text-sm">
             {currentIndex + 1} / {photos.length}
           </span>
         </div>
