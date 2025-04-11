@@ -1,12 +1,14 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Upload, Image as ImageIcon, Trophy } from "lucide-react";
+import { Upload, Image as ImageIcon, Trophy, Camera, FolderOpen } from "lucide-react";
 import { supabaseService } from "@/lib/supabase-service";
 import { Album } from "@/types";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { fileToDataUrl } from "@/lib/file-service";
 
 interface PhotoUploaderProps {
   album: Album;
@@ -17,6 +19,11 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showOptionsDialog, setShowOptionsDialog] = useState(false);
+  const [captureMode, setCaptureMode] = useState<"camera" | "gallery" | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -40,11 +47,8 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
     
     setSelectedFile(file);
     try {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      const dataUrl = await fileToDataUrl(file);
+      setPreviewUrl(dataUrl);
     } catch (error) {
       toast({
         title: "Error",
@@ -52,6 +56,9 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
         variant: "destructive"
       });
     }
+    
+    // Close the dialog if it was open
+    setShowOptionsDialog(false);
   };
   
   const handleUpload = async () => {
@@ -122,6 +129,34 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
     setSelectedFile(null);
   };
   
+  const handleAddPhotoClick = () => {
+    setShowOptionsDialog(true);
+  };
+  
+  const handleCameraOption = () => {
+    setCaptureMode("camera");
+    setShowOptionsDialog(false);
+    
+    // Slight delay to ensure dialog animation completes
+    setTimeout(() => {
+      if (cameraInputRef.current) {
+        cameraInputRef.current.click();
+      }
+    }, 100);
+  };
+  
+  const handleGalleryOption = () => {
+    setCaptureMode("gallery");
+    setShowOptionsDialog(false);
+    
+    // Slight delay to ensure dialog animation completes
+    setTimeout(() => {
+      if (fileInputRef.current) {
+        fileInputRef.current.click();
+      }
+    }, 100);
+  };
+  
   return (
     <Card className="w-full animate-fade-in">
       <CardContent className="p-6">
@@ -136,23 +171,33 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
         
         {!previewUrl ? (
           <div className="flex flex-col items-center">
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 w-full flex flex-col items-center justify-center cursor-pointer hover:border-brand-blue transition-colors">
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                id="photo-upload"
-                onChange={handleFileSelection}
-              />
-              <label 
-                htmlFor="photo-upload" 
-                className="cursor-pointer flex flex-col items-center"
-              >
-                <Upload size={40} className="text-gray-400 mb-2" />
-                <p className="font-medium text-lg">Add a photo</p>
-                <p className="text-sm text-gray-500">Click to select an image or use your camera</p>
-              </label>
+            <div 
+              className="border-2 border-dashed border-gray-300 rounded-lg p-12 w-full flex flex-col items-center justify-center cursor-pointer hover:border-brand-blue transition-colors"
+              onClick={handleAddPhotoClick}
+            >
+              <Upload size={40} className="text-gray-400 mb-2" />
+              <p className="font-medium text-lg">Add a photo</p>
+              <p className="text-sm text-gray-500">Click to take a photo or select from gallery</p>
             </div>
+            
+            {/* Hidden file inputs */}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              id="gallery-upload"
+              ref={fileInputRef}
+              onChange={handleFileSelection}
+            />
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              id="camera-upload"
+              ref={cameraInputRef}
+              onChange={handleFileSelection}
+            />
             
             {album.moderationEnabled && (
               <p className="text-sm text-muted-foreground mt-4 text-center">
@@ -190,6 +235,32 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
           </div>
         )}
       </CardContent>
+      
+      {/* Photo Source Selection Dialog */}
+      <Dialog open={showOptionsDialog} onOpenChange={setShowOptionsDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Choose photo source</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 mt-4">
+            <Button 
+              className="flex items-center gap-2 h-14 justify-start px-6"
+              onClick={handleCameraOption}
+            >
+              <Camera className="h-5 w-5" />
+              <span>Take a new photo</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2 h-14 justify-start px-6"
+              onClick={handleGalleryOption}
+            >
+              <FolderOpen className="h-5 w-5" />
+              <span>Choose from gallery</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

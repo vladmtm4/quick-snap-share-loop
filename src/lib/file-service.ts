@@ -55,3 +55,13 @@ export const createThumbnail = async (file: File): Promise<string> => {
     img.src = URL.createObjectURL(file);
   });
 };
+
+// Convert data URL to a File object
+export const dataUrlToFile = async (
+  dataUrl: string, 
+  filename: string
+): Promise<File> => {
+  const res: Response = await fetch(dataUrl);
+  const blob: Blob = await res.blob();
+  return new File([blob], filename, { type: blob.type });
+};
