@@ -2,8 +2,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
-import { Upload, Image as ImageIcon, Trophy, Camera, FolderOpen } from "lucide-react";
+import { Upload, Image as ImageIcon, Trophy, Camera, FolderOpen, Sparkles, Projector } from "lucide-react";
 import { supabaseService } from "@/lib/supabase-service";
 import { Album } from "@/types";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -21,6 +22,7 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showOptionsDialog, setShowOptionsDialog] = useState(false);
   const [captureMode, setCaptureMode] = useState<"camera" | "gallery" | null>(null);
+  const [challengeCompleted, setChallengeCompleted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -30,6 +32,11 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
   
   const isGameMode = searchParams.get('gameMode') === 'true';
   const guestAssignment = searchParams.get('assignment');
+  
+  // Reset the challenge completed state when changing albums or assignments
+  useEffect(() => {
+    setChallengeCompleted(false);
+  }, [album.id, guestAssignment]);
   
   const handleFileSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -90,27 +97,27 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
         throw new Error(result.error);
       }
       
-      toast({
-        title: "Success",
-        description: isGameMode
-          ? "Challenge photo uploaded successfully!"
-          : album.moderationEnabled
+      // Show success message
+      if (!isGameMode) {
+        toast({
+          title: "Success",
+          description: album.moderationEnabled
             ? "Photo uploaded and will appear after review"
             : "Photo uploaded successfully!"
-      });
+        });
+      }
       
       setPreviewUrl(null);
       setSelectedFile(null);
       
-      if (onUploadComplete) {
-        onUploadComplete();
+      // If in game mode, set challenge completed flag
+      if (isGameMode) {
+        setChallengeCompleted(true);
+        localStorage.setItem(`completed_challenge_${album.id}_${guestAssignment}`, "true");
       }
       
-      // If in game mode, navigate back to game page after successful upload
-      if (isGameMode) {
-        setTimeout(() => {
-          navigate(`/game/${album.id}`);
-        }, 1500);
+      if (onUploadComplete) {
+        onUploadComplete();
       }
     } catch (error) {
       console.error("Upload error:", error);
@@ -156,6 +163,66 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
       }
     }, 100);
   };
+  
+  const handleBackToUpload = () => {
+    setChallengeCompleted(false);
+  };
+  
+  const handleGoToSlideshow = () => {
+    navigate(`/slideshow/${album.id}`);
+  };
+  
+  // Render challenge completion view
+  if (isGameMode && challengeCompleted) {
+    return (
+      <Card className="w-full animate-fade-in">
+        <CardContent className="p-6">
+          <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-8 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="relative">
+                <Sparkles className="h-12 w-12 text-purple-500 animate-pulse" />
+                <Trophy className="absolute top-1 left-1 h-10 w-10 text-yellow-500" />
+              </div>
+            </div>
+            
+            <h2 className="text-2xl font-bold text-purple-700 mb-3">
+              Challenge Completed!
+            </h2>
+            
+            <p className="text-purple-600 mb-6">
+              Amazing! You found {guestAssignment} and took a great photo together!
+            </p>
+            
+            <Alert className="mb-6 bg-blue-50 border-blue-100">
+              <AlertDescription className="text-blue-700 flex flex-col gap-2">
+                <p>Your photo will appear in the slideshow soon.</p>
+                <p className="font-medium">Keep taking photos of the event and check the slideshows on the screens!</p>
+              </AlertDescription>
+            </Alert>
+            
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button 
+                variant="outline" 
+                className="border-purple-200 hover:bg-purple-50"
+                onClick={handleBackToUpload}
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                Upload More Photos
+              </Button>
+              
+              <Button
+                className="bg-blue-500 hover:bg-blue-600"
+                onClick={handleGoToSlideshow}
+              >
+                <Projector className="mr-2 h-4 w-4" />
+                View Slideshow
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   
   return (
     <Card className="w-full animate-fade-in">
