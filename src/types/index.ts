@@ -1,3 +1,4 @@
+
 export interface Album {
   id: string;
   title: string;
@@ -21,6 +22,7 @@ export interface Photo {
   metadata?: {
     gameChallenge?: boolean;
     assignment?: string;
+    guestIds?: string[]; // List of guest IDs who appear in this photo
     [key: string]: any;
   } | null;
 }
@@ -61,4 +63,11 @@ export interface GuestResponse {
 export interface SingleGuestResponse {
   data: Guest | null;
   error: any | null;
+}
+
+// New interface for guest photo share page
+export interface GuestShareResponse {
+  guest: Guest | null;
+  photos: Photo[];
+  error?: string;
 }

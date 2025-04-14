@@ -311,6 +311,53 @@ export const supabaseService = {
     }
   },
   
+  // New method to add guest to photo metadata
+  async addGuestToPhoto(photoId: string, guestId: string): Promise<boolean> {
+    try {
+      // First get the current photo
+      const { data: photo, error: getError } = await supabase
+        .from('photos')
+        .select('metadata')
+        .eq('id', photoId)
+        .single();
+      
+      if (getError || !photo) {
+        console.error("Error getting photo metadata:", getError);
+        return false;
+      }
+      
+      // Update the metadata to include the guest ID
+      const metadata = photo.metadata || {};
+      const guestIds = metadata.guestIds || [];
+      
+      // Only add if not already present
+      if (!guestIds.includes(guestId)) {
+        guestIds.push(guestId);
+      }
+      
+      const newMetadata = {
+        ...metadata,
+        guestIds
+      };
+      
+      // Update the photo
+      const { error: updateError } = await supabase
+        .from('photos')
+        .update({ metadata: newMetadata })
+        .eq('id', photoId);
+      
+      if (updateError) {
+        console.error("Error updating photo metadata:", updateError);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error adding guest to photo:", error);
+      return false;
+    }
+  },
+  
   // Storage methods
   async uploadImageToStorage(albumId: string, file: File): Promise<{ url: string, thumbnailUrl: string } | null> {
     try {

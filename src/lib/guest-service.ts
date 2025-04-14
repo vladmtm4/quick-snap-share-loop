@@ -190,6 +190,44 @@ export const guestService = {
     }
   },
   
+  async getGuestById(guestId: string): Promise<SingleGuestResponse> {
+    console.log("Fetching guest by ID:", guestId);
+    
+    try {
+      const { data, error } = await supabase
+        .from('guests')
+        .select('*')
+        .eq('id', guestId)
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Error fetching guest by ID:", error);
+        return { data: null, error };
+      }
+      
+      if (!data) {
+        return { data: null, error: null };
+      }
+      
+      const guest: Guest = {
+        id: data.id,
+        albumId: data.albumid,
+        guestName: data.guestname,
+        email: data.email || undefined,
+        phone: data.phone || undefined,
+        approved: data.approved,
+        created_at: data.created_at,
+        assigned: data.assigned || false,
+        photoUrl: data.photo_url || undefined
+      };
+      
+      return { data: guest, error: null };
+    } catch (error) {
+      console.error("Error in getGuestById:", error);
+      return { data: null, error };
+    }
+  },
+  
   async getGuestByDeviceId(albumId: string, deviceId: string): Promise<SingleGuestResponse> {
     try {
       // Look up the guest assignment in local storage first
@@ -461,5 +499,12 @@ export const guestService = {
       console.error("Error in approveGuest:", error);
       return { success: false, error };
     }
+  },
+  
+  // Generate a shareable link for a guest
+  generateShareLink(albumId: string, guestId: string): string {
+    // Create a URL to the guest share page
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/guest/${albumId}/${guestId}`;
   }
 };

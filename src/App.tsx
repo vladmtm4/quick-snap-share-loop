@@ -15,6 +15,7 @@ import UploadPage from "@/pages/UploadPage";
 import GuestManagerPage from "@/pages/GuestManagerPage";
 import AdminPage from "@/pages/AdminPage";
 import GamePage from "@/pages/GamePage";
+import GuestSelfieShare from "@/pages/GuestSelfieShare";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 // Create a client for React Query
@@ -41,6 +42,7 @@ function App() {
               <Route path="/slideshow/:albumId" element={<SlideshowPage />} />
               <Route path="/upload/:albumId" element={<UploadPage />} />
               <Route path="/game/:albumId" element={<GamePage />} />
+              <Route path="/guest/:albumId/:guestId" element={<GuestSelfieShare />} />
               
               {/* Protected routes that require authentication */}
               <Route path="/admin" element={
