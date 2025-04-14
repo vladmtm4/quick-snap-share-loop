@@ -311,7 +311,7 @@ export const supabaseService = {
     }
   },
   
-  // Updated method to add guest to photo metadata with proper type handling
+  // Fixed method to add guest to photo metadata with proper type handling
   async addGuestToPhoto(photoId: string, guestId: string): Promise<boolean> {
     try {
       // First get the current photo

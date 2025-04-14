@@ -1,158 +1,156 @@
 
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import Header from "@/components/Header";
-import PhotoUploader from "@/components/PhotoUploader";
-import ModeratorTabs from "@/components/ModeratorTabs";
+import React, { useEffect, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
+import PhotoUploader from "../components/PhotoUploader";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { supabaseService } from "@/lib/supabase-service";
+import { guestService } from "@/lib/guest-service";
+import { Camera, User } from "lucide-react";
+import Header from "@/components/Header";
 import { Album } from "@/types";
-import { Images } from "lucide-react";
 
-const UploadPage: React.FC = () => {
+const UploadPage = () => {
   const { albumId } = useParams<{ albumId: string }>();
-  const navigate = useNavigate();
-  const { toast } = useToast();
   const [searchParams] = useSearchParams();
-  const isGameMode = searchParams.get('gameMode') === 'true';
-  
+  const isSelfieMode = searchParams.get('selfie') === 'true';
   const [album, setAlbum] = useState<Album | null>(null);
-  const [uploadCount, setUploadCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [hasCompletedChallenge, setHasCompletedChallenge] = useState(false);
-  
+  const [isLoading, setIsLoading] = useState(true);
+  const [guestName, setGuestName] = useState('');
+  const [isTakingSelfie, setIsTakingSelfie] = useState(false);
+  const { toast } = useToast();
+
   useEffect(() => {
-    if (!albumId) {
+    const fetchAlbum = async () => {
+      if (!albumId) return;
+
+      try {
+        const albumData = await supabaseService.getAlbumById(albumId);
+        setAlbum(albumData);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching album:', error);
+        setIsLoading(false);
+      }
+    };
+
+    fetchAlbum();
+  }, [albumId]);
+
+  const handleSelfieSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!guestName || !albumId) {
       toast({
-        title: "Error",
-        description: "Album ID is missing",
+        title: "Name required",
+        description: "Please enter your name to continue",
         variant: "destructive"
       });
-      navigate("/");
       return;
     }
     
-    async function loadAlbum() {
-      try {
-        setLoading(true);
-        console.log("Fetching album with ID:", albumId);
-        const albumData = await supabaseService.getAlbumById(albumId);
-        console.log("Album data result:", albumData);
-        
-        if (!albumData) {
-          console.error("Album not found for ID:", albumId);
-          toast({
-            title: "Album not found",
-            description: "The album you're trying to upload to doesn't exist",
-            variant: "destructive"
-          });
-          navigate("/");
-          return;
-        }
-        
-        setAlbum(albumData);
-      } catch (error) {
-        console.error("Error loading album:", error);
+    try {
+      // Create a guest record
+      const response = await guestService.addGuestToAlbum(albumId, { guestName });
+      
+      if (response.error || !response.data) {
         toast({
           title: "Error",
-          description: "Failed to load album data",
+          description: "Could not create guest record",
           variant: "destructive"
         });
-        navigate("/");
-      } finally {
-        setLoading(false);
+        return;
       }
-    }
-    
-    loadAlbum();
-    
-    // Check if user has completed any challenges
-    if (albumId) {
-      checkForCompletedChallenge(albumId);
-    }
-  }, [albumId, navigate, toast]);
-  
-  const checkForCompletedChallenge = (albumId: string) => {
-    // Check localStorage for any completed challenges for this album
-    const keys = Object.keys(localStorage);
-    const challengeKeys = keys.filter(key => key.startsWith(`completed_challenge_${albumId}`));
-    setHasCompletedChallenge(challengeKeys.length > 0);
-  };
-  
-  const handleUploadComplete = () => {
-    setUploadCount(prev => prev + 1);
-    // After 3 uploads, prompt to view slideshow
-    if (uploadCount + 1 >= 3) {
+      
+      // Redirect to the guest selfie share page
+      window.location.href = `/guest/${albumId}/${response.data.id}`;
+    } catch (error) {
+      console.error('Error creating guest:', error);
       toast({
-        title: "Great uploads!",
-        description: "Would you like to view the slideshow?",
-        action: (
-          <Button 
-            onClick={() => navigate(`/slideshow/${albumId}`)}
-            className="bg-brand-blue hover:bg-brand-darkBlue"
-          >
-            View Now
-          </Button>
-        ),
+        title: "Error",
+        description: "Something went wrong",
+        variant: "destructive"
       });
     }
   };
-  
-  if (loading) {
+
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading...</p>
+      <div className="container mx-auto p-4">
+        <Header />
+        <div className="flex justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+        </div>
       </div>
     );
   }
-  
+
   if (!album) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Album not found</p>
+      <div className="container mx-auto p-4">
+        <Header />
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">Album not found</h1>
+          <p className="text-gray-500">The album you're looking for doesn't exist or has been removed.</p>
+        </div>
       </div>
     );
   }
-  
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Header showBackButton />
-      
-      <div className="container max-w-lg py-8 px-4">
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold mb-2">
-            {hasCompletedChallenge && !isGameMode ? "Add More Photos" : "Add Photos"}
-          </h1>
-          <p className="text-gray-600">
-            Upload your photos to "{album.title}"
-            {hasCompletedChallenge && !isGameMode && " - Keep capturing moments!"}
-          </p>
+
+  // If in selfie mode, show a form to enter name and take selfie
+  if (isSelfieMode) {
+    return (
+      <div className="container mx-auto p-4">
+        <Header />
+        <div className="flex flex-col items-center max-w-md mx-auto mt-10">
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center mb-6">
+                <h1 className="text-2xl font-bold">{album.title}</h1>
+                <p className="text-gray-500">Find photos you appear in</p>
+              </div>
+              
+              <form onSubmit={handleSelfieSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Your Name
+                  </label>
+                  <input 
+                    type="text"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                    placeholder="Enter your name"
+                    required
+                  />
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full"
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  Continue to Take Selfie
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         </div>
-        
-        {!isGameMode && !hasCompletedChallenge && <ModeratorTabs album={album} currentTab="upload" />}
-        
-        <PhotoUploader 
-          album={album} 
-          onUploadComplete={handleUploadComplete}
-        />
-        
-        {uploadCount > 0 && !isGameMode && (
-          <div className="mt-8 text-center">
-            <p className="mb-4 text-gray-600">
-              {uploadCount} photo{uploadCount !== 1 ? 's' : ''} uploaded successfully!
-            </p>
-            
-            <Button 
-              onClick={() => navigate(`/slideshow/${albumId}`)}
-              className="bg-brand-blue hover:bg-brand-darkBlue"
-            >
-              <Images className="mr-2 h-4 w-4" />
-              View Slideshow
-            </Button>
-          </div>
-        )}
       </div>
+    );
+  }
+
+  // Regular upload mode
+  return (
+    <div className="container mx-auto p-4">
+      <Header />
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">{album.title}</h1>
+        <p className="text-gray-500">Upload photos to this album</p>
+      </div>
+      
+      <PhotoUploader albumId={albumId || ''} />
     </div>
   );
 };
