@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,6 +37,14 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
   useEffect(() => {
     setChallengeCompleted(false);
   }, [album.id, guestAssignment]);
+  
+  // Check if we've already completed a challenge for this guest
+  useEffect(() => {
+    if (isGameMode && guestAssignment) {
+      const hasCompleted = localStorage.getItem(`completed_challenge_${album.id}_${guestAssignment}`);
+      setChallengeCompleted(hasCompleted === 'true');
+    }
+  }, [album.id, isGameMode, guestAssignment]);
   
   const handleFileSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -110,7 +119,7 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
       setSelectedFile(null);
       
       // If in game mode, set challenge completed flag
-      if (isGameMode) {
+      if (isGameMode && guestAssignment) {
         setChallengeCompleted(true);
         localStorage.setItem(`completed_challenge_${album.id}_${guestAssignment}`, "true");
       }
@@ -165,10 +174,13 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
   
   const handleBackToUpload = () => {
     setChallengeCompleted(false);
+    
+    // Clear game mode parameters to switch to regular upload mode
+    navigate(`/upload/${album.id}`, { replace: true });
   };
   
   // Render challenge completion view
-  if (isGameMode && challengeCompleted) {
+  if (isGameMode && challengeCompleted && guestAssignment) {
     return (
       <Card className="w-full animate-fade-in">
         <CardContent className="p-6">
@@ -211,7 +223,7 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
   return (
     <Card className="w-full animate-fade-in">
       <CardContent className="p-6">
-        {isGameMode && (
+        {isGameMode && guestAssignment && !challengeCompleted && (
           <div className="mb-4 p-3 bg-yellow-50 border border-yellow-100 rounded-md flex items-center gap-2">
             <Trophy className="text-yellow-500 h-5 w-5 flex-shrink-0" />
             <p className="text-sm">

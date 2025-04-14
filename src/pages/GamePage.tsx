@@ -7,7 +7,9 @@ import { supabaseService } from "@/lib/supabase-service";
 import { Album } from "@/types";
 import { useToast } from "@/components/ui/use-toast";
 import { useLanguage } from "@/lib/i18n";
-import { Camera } from "lucide-react";
+import { Camera, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const GamePage: React.FC = () => {
   const { albumId } = useParams<{ albumId: string }>();
@@ -17,6 +19,7 @@ const GamePage: React.FC = () => {
   
   const [album, setAlbum] = useState<Album | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasCompletedChallenge, setHasCompletedChallenge] = useState(false);
   
   useEffect(() => {
     if (!albumId) {
@@ -45,6 +48,9 @@ const GamePage: React.FC = () => {
         }
         
         setAlbum(albumData);
+        
+        // Check if user has already completed a challenge
+        checkForCompletedChallenge();
       } catch (error) {
         console.error("Error loading album:", error);
         toast({
@@ -61,8 +67,19 @@ const GamePage: React.FC = () => {
     loadAlbum();
   }, [albumId, navigate, toast]);
   
+  const checkForCompletedChallenge = () => {
+    // Check localStorage for any completed challenges for this album
+    const keys = Object.keys(localStorage);
+    const challengeKeys = keys.filter(key => key.startsWith(`completed_challenge_${albumId}`));
+    setHasCompletedChallenge(challengeKeys.length > 0);
+  };
+  
   const handleClose = () => {
     navigate(`/album/${albumId}`);
+  };
+  
+  const handleGoToUpload = () => {
+    navigate(`/upload/${albumId}`);
   };
   
   if (loading) {
@@ -85,6 +102,54 @@ const GamePage: React.FC = () => {
         <Header showBackButton />
         <div className="container max-w-3xl py-12 px-4 text-center">
           <p className="text-gray-600">Album not found</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // If user has completed a challenge, show upload option instead
+  if (hasCompletedChallenge) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+        <Header showBackButton hideAuthButtons />
+        <div className="container max-w-3xl py-8 px-4">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center p-3 bg-blue-100 rounded-full mb-4">
+              <Check className="h-8 w-8 text-green-600" />
+            </div>
+            <h1 className="text-3xl font-bold text-blue-800 mb-2">
+              Challenge Completed!
+            </h1>
+            <p className="text-gray-600 max-w-md mx-auto">
+              You've already completed a photo challenge. Would you like to upload more photos?
+            </p>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="space-y-6">
+              <Alert className="bg-blue-50">
+                <AlertDescription>
+                  You can keep taking photos of the event without specific challenges.
+                </AlertDescription>
+              </Alert>
+              
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button
+                  variant="outline"
+                  onClick={handleClose}
+                >
+                  Go Back
+                </Button>
+                <Button
+                  className="bg-blue-500 hover:bg-blue-600"
+                  onClick={handleGoToUpload}
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  Upload Photos
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );

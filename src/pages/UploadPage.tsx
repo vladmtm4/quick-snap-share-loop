@@ -20,6 +20,7 @@ const UploadPage: React.FC = () => {
   const [album, setAlbum] = useState<Album | null>(null);
   const [uploadCount, setUploadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [hasCompletedChallenge, setHasCompletedChallenge] = useState(false);
   
   useEffect(() => {
     if (!albumId) {
@@ -65,7 +66,19 @@ const UploadPage: React.FC = () => {
     }
     
     loadAlbum();
+    
+    // Check if user has completed any challenges
+    if (albumId) {
+      checkForCompletedChallenge(albumId);
+    }
   }, [albumId, navigate, toast]);
+  
+  const checkForCompletedChallenge = (albumId: string) => {
+    // Check localStorage for any completed challenges for this album
+    const keys = Object.keys(localStorage);
+    const challengeKeys = keys.filter(key => key.startsWith(`completed_challenge_${albumId}`));
+    setHasCompletedChallenge(challengeKeys.length > 0);
+  };
   
   const handleUploadComplete = () => {
     setUploadCount(prev => prev + 1);
@@ -108,20 +121,23 @@ const UploadPage: React.FC = () => {
       
       <div className="container max-w-lg py-8 px-4">
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold mb-2">Add Photos</h1>
+          <h1 className="text-2xl font-bold mb-2">
+            {hasCompletedChallenge && !isGameMode ? "Add More Photos" : "Add Photos"}
+          </h1>
           <p className="text-gray-600">
             Upload your photos to "{album.title}"
+            {hasCompletedChallenge && !isGameMode && " - Keep capturing moments!"}
           </p>
         </div>
         
-        {!isGameMode && <ModeratorTabs album={album} currentTab="upload" />}
+        {!isGameMode && !hasCompletedChallenge && <ModeratorTabs album={album} currentTab="upload" />}
         
         <PhotoUploader 
           album={album} 
           onUploadComplete={handleUploadComplete}
         />
         
-        {uploadCount > 0 && (
+        {uploadCount > 0 && !isGameMode && (
           <div className="mt-8 text-center">
             <p className="mb-4 text-gray-600">
               {uploadCount} photo{uploadCount !== 1 ? 's' : ''} uploaded successfully!
