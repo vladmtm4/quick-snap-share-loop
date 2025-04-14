@@ -311,7 +311,7 @@ export const supabaseService = {
     }
   },
   
-  // New method to add guest to photo metadata
+  // Updated method to add guest to photo metadata with proper type checking
   async addGuestToPhoto(photoId: string, guestId: string): Promise<boolean> {
     try {
       // First get the current photo
@@ -326,9 +326,13 @@ export const supabaseService = {
         return false;
       }
       
-      // Update the metadata to include the guest ID
-      const metadata = photo.metadata || {};
-      const guestIds = metadata.guestIds || [];
+      // Initialize metadata as object if null or not an object
+      const metadata = typeof photo.metadata === 'object' && photo.metadata !== null 
+        ? photo.metadata 
+        : {};
+      
+      // Initialize guestIds as array if it doesn't exist or isn't an array
+      const guestIds = Array.isArray(metadata.guestIds) ? metadata.guestIds : [];
       
       // Only add if not already present
       if (!guestIds.includes(guestId)) {
