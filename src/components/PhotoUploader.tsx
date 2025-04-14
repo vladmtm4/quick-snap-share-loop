@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
-import { Upload, Image as ImageIcon, Trophy, Camera, FolderOpen, Sparkles } from "lucide-react";
+import { Upload, Image as ImageIcon, Trophy, Camera, FolderOpen, Sparkles, CheckCircle } from "lucide-react";
 import { supabaseService } from "@/lib/supabase-service";
 import { Album } from "@/types";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -182,40 +182,55 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
   // Render challenge completion view
   if (isGameMode && challengeCompleted && guestAssignment) {
     return (
-      <Card className="w-full animate-fade-in">
-        <CardContent className="p-6">
-          <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-8 text-center">
-            <div className="flex justify-center mb-4">
-              <div className="relative">
-                <Sparkles className="h-12 w-12 text-purple-500 animate-pulse" />
-                <Trophy className="absolute top-1 left-1 h-10 w-10 text-yellow-500" />
+      <Card className="w-full animate-fade-in shadow-lg overflow-hidden border-0">
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-1">
+          <CardContent className="p-0">
+            <div className="bg-white rounded-lg p-8 text-center space-y-6">
+              <div className="relative mx-auto w-24 h-24 flex items-center justify-center">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-blue-500 rounded-full opacity-10 animate-pulse" />
+                <div className="absolute inset-1 bg-white rounded-full flex items-center justify-center">
+                  <CheckCircle className="h-12 w-12 text-green-500" />
+                </div>
               </div>
+              
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                  Challenge Completed!
+                </h2>
+                
+                <p className="text-gray-600 text-lg mb-2">
+                  Great photo with {guestAssignment}!
+                </p>
+                
+                <p className="text-gray-500 text-sm">
+                  Your photo has been added to the album
+                </p>
+              </div>
+              
+              <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 rounded-xl p-6">
+                <div className="flex items-start gap-3">
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <Camera className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-medium text-blue-700 mb-1">Keep capturing memories!</h3>
+                    <p className="text-sm text-blue-600">
+                      Continue taking photos of the event to build an amazing collection of memories.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <Button 
+                className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-medium py-6 h-auto transition-all"
+                onClick={handleBackToUpload}
+              >
+                <Camera className="mr-2 h-5 w-5" />
+                Capture More Moments
+              </Button>
             </div>
-            
-            <h2 className="text-2xl font-bold text-purple-700 mb-3">
-              Challenge Completed!
-            </h2>
-            
-            <p className="text-purple-600 mb-6">
-              Amazing! You found {guestAssignment} and took a great photo together!
-            </p>
-            
-            <Alert className="mb-6 bg-blue-50 border-blue-100">
-              <AlertDescription className="text-blue-700">
-                Keep taking photos of the event and enjoy the festivities!
-              </AlertDescription>
-            </Alert>
-            
-            <Button 
-              variant="outline" 
-              className="border-purple-200 hover:bg-purple-50"
-              onClick={handleBackToUpload}
-            >
-              <Camera className="mr-2 h-4 w-4" />
-              Upload More Photos
-            </Button>
-          </div>
-        </CardContent>
+          </CardContent>
+        </div>
       </Card>
     );
   }
