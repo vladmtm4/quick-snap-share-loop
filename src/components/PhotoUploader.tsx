@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
-import { Upload, Image as ImageIcon, Trophy, Camera, FolderOpen, Sparkles, Projector } from "lucide-react";
+import { Upload, Image as ImageIcon, Trophy, Camera, FolderOpen, Sparkles } from "lucide-react";
 import { supabaseService } from "@/lib/supabase-service";
 import { Album } from "@/types";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -168,10 +167,6 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
     setChallengeCompleted(false);
   };
   
-  const handleGoToSlideshow = () => {
-    navigate(`/slideshow/${album.id}`);
-  };
-  
   // Render challenge completion view
   if (isGameMode && challengeCompleted) {
     return (
@@ -194,30 +189,19 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
             </p>
             
             <Alert className="mb-6 bg-blue-50 border-blue-100">
-              <AlertDescription className="text-blue-700 flex flex-col gap-2">
-                <p>Your photo will appear in the slideshow soon.</p>
-                <p className="font-medium">Keep taking photos of the event and check the slideshows on the screens!</p>
+              <AlertDescription className="text-blue-700">
+                Keep taking photos of the event and enjoy the festivities!
               </AlertDescription>
             </Alert>
             
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button 
-                variant="outline" 
-                className="border-purple-200 hover:bg-purple-50"
-                onClick={handleBackToUpload}
-              >
-                <Camera className="mr-2 h-4 w-4" />
-                Upload More Photos
-              </Button>
-              
-              <Button
-                className="bg-blue-500 hover:bg-blue-600"
-                onClick={handleGoToSlideshow}
-              >
-                <Projector className="mr-2 h-4 w-4" />
-                View Slideshow
-              </Button>
-            </div>
+            <Button 
+              variant="outline" 
+              className="border-purple-200 hover:bg-purple-50"
+              onClick={handleBackToUpload}
+            >
+              <Camera className="mr-2 h-4 w-4" />
+              Upload More Photos
+            </Button>
           </div>
         </CardContent>
       </Card>
