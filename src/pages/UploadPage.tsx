@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +8,7 @@ import { guestService } from "@/lib/guest-service";
 import { Camera, User } from "lucide-react";
 import Header from "@/components/Header";
 import { Album } from "@/types";
+import PhotoUploader from "@/components/PhotoUploader";
 
 const UploadPage = () => {
   const { albumId } = useParams<{ albumId: string }>();
@@ -97,7 +97,6 @@ const UploadPage = () => {
     );
   }
 
-  // If in selfie mode, show a form to enter name and take selfie
   if (isSelfieMode) {
     return (
       <div className="container mx-auto p-4">
@@ -140,7 +139,6 @@ const UploadPage = () => {
     );
   }
 
-  // Regular upload mode
   return (
     <div className="container mx-auto p-4">
       <Header />
@@ -149,7 +147,6 @@ const UploadPage = () => {
         <p className="text-gray-500">Upload photos to this album</p>
       </div>
       
-      {/* Fix the prop name from albumId to album */}
       <PhotoUploader album={album} />
     </div>
   );
