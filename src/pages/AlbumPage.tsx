@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,22 +7,21 @@ import { supabaseService } from "@/lib/supabase-service";
 import Header from "@/components/Header";
 import { useAuth } from "@/lib/auth-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useTranslation } from "@/lib/i18n";
 import { Card, CardContent } from "@/components/ui/card";
 import ModerationPanel from "@/components/ModerationPanel";
-import { Slideshow, Upload, Camera, PlusCircle, Users, QrCode, Share } from "lucide-react";
+import { Upload, Camera, PlusCircle, Users, QrCode, Share } from "lucide-react";
 import AlbumQRCode from "@/components/AlbumQRCode";
 import AlbumShareLink from "@/components/AlbumShareLink";
 
 function AlbumPage() {
   const { albumId } = useParams<{ albumId: string }>();
   const navigate = useNavigate();
-  const { t } = useTranslation();
   const { user } = useAuth();
   const [album, setAlbum] = useState<Album | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showQRCode, setShowQRCode] = useState(false);
+  const [showModeration, setShowModeration] = useState(false);
 
   useEffect(() => {
     const fetchAlbum = async () => {
@@ -92,7 +92,7 @@ function AlbumPage() {
             className="gap-2"
           >
             <Upload className="h-4 w-4" />
-            {t("Upload Photos")}
+            Upload Photos
           </Button>
           
           <Button
@@ -100,8 +100,8 @@ function AlbumPage() {
             onClick={() => navigate(`/slideshow/${albumId}`)}
             className="gap-2"
           >
-            <Slideshow className="h-4 w-4" />
-            {t("Slideshow")}
+            <Camera className="h-4 w-4" />
+            Slideshow
           </Button>
           
           <Button
@@ -110,7 +110,7 @@ function AlbumPage() {
             className="gap-2"
           >
             <QrCode className="h-4 w-4" />
-            {t("QR Code")}
+            QR Code
           </Button>
           
           <AlbumShareLink albumId={albumId || ''} />
@@ -122,7 +122,7 @@ function AlbumPage() {
               className="gap-2"
             >
               <Users className="h-4 w-4" />
-              {t("Manage Guests")}
+              Manage Guests
             </Button>
           )}
 
@@ -133,7 +133,7 @@ function AlbumPage() {
               className="gap-2"
             >
               <Camera className="h-4 w-4" />
-              {t("Photo Game")}
+              Photo Game
             </Button>
           )}
         </div>
@@ -143,9 +143,9 @@ function AlbumPage() {
 
       <Tabs defaultValue="all" className="mt-6">
         <TabsList>
-          <TabsTrigger value="all">{t("All Photos")}</TabsTrigger>
+          <TabsTrigger value="all">All Photos</TabsTrigger>
           {album.moderationEnabled && album.ownerId === user?.id && (
-            <TabsTrigger value="moderation">{t("Moderation")}</TabsTrigger>
+            <TabsTrigger value="moderation">Moderation</TabsTrigger>
           )}
         </TabsList>
 
@@ -155,7 +155,10 @@ function AlbumPage() {
 
         {album.moderationEnabled && album.ownerId === user?.id && (
           <TabsContent value="moderation" className="mt-2">
-            <ModerationPanel albumId={albumId || ""} />
+            <ModerationPanel 
+              albumId={albumId || ""} 
+              onClose={() => setShowModeration(false)}
+            />
           </TabsContent>
         )}
       </Tabs>

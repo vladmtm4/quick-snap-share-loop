@@ -1,7 +1,6 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import PhotoUploader from "../components/PhotoUploader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -150,7 +149,8 @@ const UploadPage = () => {
         <p className="text-gray-500">Upload photos to this album</p>
       </div>
       
-      <PhotoUploader albumId={albumId || ''} />
+      {/* Fix the prop name from albumId to album */}
+      <PhotoUploader album={album} />
     </div>
   );
 };
