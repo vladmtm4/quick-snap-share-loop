@@ -54,6 +54,7 @@ export type Database = {
           email: string | null
           guestname: string
           id: string
+          instagram: string | null
           phone: string | null
           photo_url: string | null
         }
@@ -65,6 +66,7 @@ export type Database = {
           email?: string | null
           guestname: string
           id?: string
+          instagram?: string | null
           phone?: string | null
           photo_url?: string | null
         }
@@ -76,6 +78,7 @@ export type Database = {
           email?: string | null
           guestname?: string
           id?: string
+          instagram?: string | null
           phone?: string | null
           photo_url?: string | null
         }

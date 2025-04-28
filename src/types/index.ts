@@ -1,4 +1,3 @@
-
 export interface Album {
   id: string;
   title: string;
@@ -39,10 +38,11 @@ export interface Guest {
   guestName: string;
   email?: string;
   phone?: string;
+  instagram?: string;
   approved?: boolean;
   created_at?: string;
   assigned?: boolean;
-  photoUrl?: string; // Added photoUrl for guest photo
+  photoUrl?: string;
 }
 
 // Profile interface for admin page

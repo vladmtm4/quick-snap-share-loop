@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { guestService } from "@/lib/guest-service";
 import { Image, Upload, Instagram } from "lucide-react";
 
@@ -42,6 +42,7 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId }) => {
       const guestData = {
         guestName: name.trim(),
         email: email.trim() || undefined,
+        instagram: instagram.trim() || undefined
       };
 
       // Add guest to album
@@ -56,7 +57,7 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId }) => {
         const fileExt = photoFile.name.split('.').pop();
         const filePath = `${albumId}/${response.data.id}/profile.${fileExt}`;
 
-        const uploadResult = await supabaseService.uploadImageToStorage(albumId, photoFile, filePath);
+        const uploadResult = await guestService.uploadImageToStorage(response.data.id, photoFile, filePath);
         if (uploadResult) {
           await guestService.updateGuestPhoto(response.data.id, uploadResult.url);
         }
