@@ -2,7 +2,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 import { Guest, GuestResponse, SingleGuestResponse } from "@/types";
 
-// Define a more specific type for the database response to include photo_url
 type GuestDatabaseResponse = {
   id: string;
   albumid: string;
@@ -15,13 +14,11 @@ type GuestDatabaseResponse = {
   photo_url: string | null;
 };
 
-// Guest service using raw queries to avoid type errors
 export const guestService = {
   async getAllGuestsForAlbum(albumId: string): Promise<GuestResponse> {
     console.log("Fetching guests for album:", albumId);
     
     try {
-      // Use a raw query since the guests table isn't in the Database type definition yet
       const { data, error } = await supabase
         .from('guests')
         .select('*')
@@ -32,7 +29,6 @@ export const guestService = {
         return { data: null, error };
       }
       
-      // Map the DB response to our Guest type
       const guests: Guest[] = (data || []).map((item: GuestDatabaseResponse) => ({
         id: item.id,
         albumId: item.albumid,
@@ -56,61 +52,50 @@ export const guestService = {
     console.log("Fetching unassigned guest for album:", albumId);
     
     try {
-      // Get device ID for assignment tracking
       const deviceId = localStorage.getItem('device_id') || '';
       
-      // Get a random unassigned guest - excluding the currently assigned guest to this device ID
       const currentAssignedId = localStorage.getItem(`album_${albumId}_device_${deviceId}`);
       
       console.log("Looking for unassigned guest with photo, current assigned ID:", currentAssignedId);
       
-      // Use a database query to find unassigned guests with photos
       let query = supabase
         .from('guests')
         .select('*')
         .eq('albumid', albumId)
         .eq('approved', true)
-        .eq('assigned', false) // Look for guests not assigned in DB
-        .not('photo_url', 'is', null); // Make sure we only get guests with photos
+        .eq('assigned', false)
+        .not('photo_url', 'is', null);
       
-      // Add a filter to exclude the current guest if one is assigned
       if (currentAssignedId) {
         query = query.neq('id', currentAssignedId);
       }
       
-      // Important fix: Use maybeSingle instead of single to avoid errors when no guest is found
       const { data, error } = await query
         .limit(1)
         .maybeSingle();
       
       if (!data || error) {
         console.log("No unassigned guests found, attempting to reset assignments");
-        // If no unassigned guests are found, reset all assignments and try again
         await this.resetAllGuestAssignments(albumId);
         console.log("Assignments reset, trying to find a guest again");
         
-        // Get a new guest but exclude current one to avoid reassigning the same guest
         const queryAfterReset = supabase
           .from('guests')
           .select('*')
           .eq('albumid', albumId)
           .eq('approved', true)
-          .not('photo_url', 'is', null); // Make sure we only get guests with photos
+          .not('photo_url', 'is', null);
             
-        // Add filter to exclude current guest
         if (currentAssignedId) {
           queryAfterReset.neq('id', currentAssignedId);
         }
         
-        // Use maybeSingle here too
         const { data: resetData, error: resetError } = await queryAfterReset
           .limit(1)
           .maybeSingle();
             
         if (!resetData || resetError) {
           console.log("Still couldn't find a guest, last resort attempt...");
-          // If we still can't find a guest after reset, try without the exclusion filter
-          // as a last resort (better to possibly get same guest than no guest at all)
           const lastResortQuery = await supabase
             .from('guests')
             .select('*')
@@ -125,7 +110,6 @@ export const guestService = {
             return { data: null, error: lastResortQuery.error || new Error("No approved guests available") };
           }
             
-          // Mark this guest as assigned in the database
           const markSuccess = await this.markGuestAsAssigned(lastResortQuery.data.id);
           console.log("Guest assigned successfully:", markSuccess, lastResortQuery.data.id);
             
@@ -148,7 +132,6 @@ export const guestService = {
           return { data: null, error: new Error("No approved guests available") };
         }
           
-        // Mark this guest as assigned in the database
         const markSuccess = await this.markGuestAsAssigned(resetData.id);
         console.log("Guest assigned successfully:", markSuccess, resetData.id);
           
@@ -167,7 +150,6 @@ export const guestService = {
         return { data: guest, error: null };
       }
       
-      // Mark this guest as assigned in the database
       const markSuccess = await this.markGuestAsAssigned(data.id);
       console.log("Guest assigned successfully:", markSuccess, data.id);
       
@@ -230,11 +212,9 @@ export const guestService = {
   
   async getGuestByDeviceId(albumId: string, deviceId: string): Promise<SingleGuestResponse> {
     try {
-      // Look up the guest assignment in local storage first
       const storedGuestId = localStorage.getItem(`album_${albumId}_device_${deviceId}`);
       
       if (storedGuestId) {
-        // Fetch the guest by ID
         const { data, error } = await supabase
           .from('guests')
           .select('*')
@@ -249,7 +229,6 @@ export const guestService = {
         }
         
         if (data) {
-          // Ensure this guest is marked as assigned in the database
           await this.markGuestAsAssigned(data.id);
           
           const guest: Guest = {
@@ -268,7 +247,6 @@ export const guestService = {
         }
       }
       
-      // If no stored guest or guest not found, return null
       return { data: null, error: null };
     } catch (error) {
       console.error("Error in getGuestByDeviceId:", error);
@@ -278,7 +256,6 @@ export const guestService = {
   
   storeGuestAssignment(albumId: string, guestId: string): void {
     try {
-      // Generate a unique device ID or use existing one
       let deviceId = localStorage.getItem('device_id');
       if (!deviceId) {
         deviceId = uuidv4();
@@ -287,10 +264,8 @@ export const guestService = {
       
       console.log("Storing guest assignment:", albumId, guestId, "for device", deviceId);
       
-      // Store the guest assignment
       localStorage.setItem(`album_${albumId}_device_${deviceId}`, guestId);
       
-      // Also mark as assigned in database (for redundancy)
       this.markGuestAsAssigned(guestId);
     } catch (error) {
       console.error("Error storing guest assignment:", error);
@@ -303,10 +278,8 @@ export const guestService = {
       if (deviceId) {
         const storedGuestId = localStorage.getItem(`album_${albumId}_device_${deviceId}`);
         if (storedGuestId) {
-          // Remove from localStorage
           localStorage.removeItem(`album_${albumId}_device_${deviceId}`);
           
-          // Update the guest's assigned status in the database
           await this.markGuestAsUnassigned(storedGuestId);
           console.log("Cleared assignment for guest:", storedGuestId);
         }
@@ -322,7 +295,6 @@ export const guestService = {
     console.log("Resetting all guest assignments for album:", albumId);
     
     try {
-      // Use a direct update query with casting to handle type issues
       const { error } = await supabase
         .from('guests')
         .update({ assigned: false })
@@ -345,7 +317,6 @@ export const guestService = {
     console.log("Marking guest as assigned:", guestId);
     
     try {
-      // Fix: Cast as object instead of using 'as any' for better type safety
       const { error } = await supabase
         .from('guests')
         .update({ assigned: true })
@@ -368,7 +339,6 @@ export const guestService = {
     console.log("Marking guest as unassigned:", guestId);
     
     try {
-      // Fix: Cast as object instead of using 'as any' for better type safety
       const { error } = await supabase
         .from('guests')
         .update({ assigned: false })
@@ -390,7 +360,7 @@ export const guestService = {
   async addGuestToAlbum(albumId: string, guestData: { 
     guestName: string, 
     email?: string, 
-    phone?: string,
+    instagram?: string,
     photoUrl?: string 
   }): Promise<SingleGuestResponse> {
     console.log("Adding guest to album:", albumId, guestData);
@@ -401,11 +371,11 @@ export const guestService = {
         albumid: albumId,
         guestname: guestData.guestName,
         email: guestData.email || null,
-        phone: guestData.phone || null,
+        instagram: guestData.instagram || null,
+        photo_url: guestData.photoUrl || null,
         approved: false,
         assigned: false,
-        created_at: new Date().toISOString(),
-        photo_url: guestData.photoUrl || null
+        created_at: new Date().toISOString()
       };
       
       const { data, error } = await supabase
@@ -424,7 +394,7 @@ export const guestService = {
         albumId: data.albumid,
         guestName: data.guestname,
         email: data.email || undefined,
-        phone: data.phone || undefined,
+        instagram: data.instagram || undefined,
         approved: data.approved,
         created_at: data.created_at,
         assigned: data.assigned || false,
@@ -444,7 +414,7 @@ export const guestService = {
     try {
       const { error } = await supabase
         .from('guests')
-        .update({ photo_url: photoUrl } as any) // Using 'as any' to bypass type checking
+        .update({ photo_url: photoUrl } as any)
         .eq('id', guestId);
       
       if (error) {
@@ -501,9 +471,7 @@ export const guestService = {
     }
   },
   
-  // Generate a shareable link for a guest
   generateShareLink(albumId: string, guestId: string): string {
-    // Create a URL to the guest share page
     const baseUrl = window.location.origin;
     return `${baseUrl}/guest/${albumId}/${guestId}`;
   }

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -9,9 +8,10 @@ import { useAuth } from "@/lib/auth-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import ModerationPanel from "@/components/ModerationPanel";
-import { Upload, Camera, PlusCircle, Users, QrCode, Share } from "lucide-react";
+import { Upload, Camera, PlusCircle, Users, QrCode, Share, UserPlus } from "lucide-react";
 import AlbumQRCode from "@/components/AlbumQRCode";
 import AlbumShareLink from "@/components/AlbumShareLink";
+import GuestRegistration from "@/components/GuestRegistration";
 
 function AlbumPage() {
   const { albumId } = useParams<{ albumId: string }>();
@@ -22,6 +22,7 @@ function AlbumPage() {
   const [error, setError] = useState<string | null>(null);
   const [showQRCode, setShowQRCode] = useState(false);
   const [showModeration, setShowModeration] = useState(false);
+  const [showGuestRegistration, setShowGuestRegistration] = useState(false);
 
   useEffect(() => {
     const fetchAlbum = async () => {
@@ -136,8 +137,23 @@ function AlbumPage() {
               Photo Game
             </Button>
           )}
+
+          <Button
+            variant="outline"
+            onClick={() => setShowGuestRegistration(!showGuestRegistration)}
+            className="gap-2"
+          >
+            <UserPlus className="h-4 w-4" />
+            Register as Guest
+          </Button>
         </div>
       </div>
+
+      {showGuestRegistration && (
+        <div className="mb-6">
+          <GuestRegistration albumId={albumId || ""} />
+        </div>
+      )}
 
       {showQRCode && <AlbumQRCode albumId={albumId || ""} />}
 
