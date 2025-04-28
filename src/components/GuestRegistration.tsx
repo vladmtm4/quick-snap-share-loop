@@ -3,10 +3,10 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { guestService } from "@/lib/guest-service";
-import { Image, Upload, Instagram } from "lucide-react";
+import { Upload } from "lucide-react";
 
 interface GuestRegistrationProps {
   albumId: string;
@@ -14,8 +14,6 @@ interface GuestRegistrationProps {
 
 const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId }) => {
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [instagram, setInstagram] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const { toast } = useToast();
@@ -41,8 +39,6 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId }) => {
     try {
       const guestData = {
         guestName: name.trim(),
-        email: email.trim() || undefined,
-        instagram: instagram.trim() || undefined
       };
 
       // Add guest to album
@@ -70,8 +66,6 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId }) => {
 
       // Clear form
       setName("");
-      setEmail("");
-      setInstagram("");
       setPhotoFile(null);
 
     } catch (error) {
@@ -89,48 +83,26 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId }) => {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle>Register as a Guest</CardTitle>
+        <CardTitle>Wedding Guest Registration</CardTitle>
+        <CardDescription className="text-base mt-2">
+          Welcome to our wedding celebration! We're planning a special photo-finding game during the reception where guests will try to locate each other in photos. To participate, please register your name and upload a photo of yourself that other guests can use to find you during the game.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">Your Name</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
+              placeholder="Enter your full name"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email (optional)</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="instagram">Instagram Handle (optional)</Label>
-            <div className="relative">
-              <Input
-                id="instagram"
-                value={instagram}
-                onChange={(e) => setInstagram(e.target.value)}
-                placeholder="@yourusername"
-                className="pl-10"
-              />
-              <Instagram className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="photo">Profile Photo (optional)</Label>
+            <Label htmlFor="photo">Your Photo</Label>
             <Input
               id="photo"
               type="file"
@@ -138,6 +110,9 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId }) => {
               onChange={handleFileChange}
               className="cursor-pointer"
             />
+            <p className="text-sm text-muted-foreground mt-1">
+              This photo will help other guests find you during the reception game
+            </p>
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
@@ -146,7 +121,7 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId }) => {
             ) : (
               <>
                 <Upload className="mr-2 h-4 w-4" />
-                Register
+                Register for the Event
               </>
             )}
           </Button>
