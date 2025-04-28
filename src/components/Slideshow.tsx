@@ -5,20 +5,21 @@ import { ArrowLeft, Play, Pause } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Photo } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 interface SlideshowProps {
   photos: Photo[];
   albumId: string;
   autoRefresh?: boolean;
   interval?: number;
-  updateSignal?: number; // Signal to detect when photos array changes
+  updateSignal?: number;
 }
 
 const Slideshow: React.FC<SlideshowProps> = ({ 
   photos: initialPhotos, 
   albumId,
   autoRefresh = true, 
-  interval = 8000, // 8 seconds interval
+  interval = 8000,
   updateSignal = 0
 }) => {
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
@@ -26,6 +27,7 @@ const Slideshow: React.FC<SlideshowProps> = ({
   const [isPlaying, setIsPlaying] = useState(true);
   const prevPhotoCount = useRef(initialPhotos.length);
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   // Update photos state when props change
   useEffect(() => {
@@ -47,12 +49,18 @@ const Slideshow: React.FC<SlideshowProps> = ({
           console.log("Slideshow: Current index out of bounds after photos were removed, adjusting");
           setCurrentIndex(Math.max(photos.length - 1, 0));
         }
+      } else if (photos.length > prevPhotoCount.current) {
+        // New photo was added - notify user
+        toast({
+          title: "New Photo",
+          description: "A new photo has been added to the slideshow",
+        });
       }
       
       // Update our reference
       prevPhotoCount.current = photos.length;
     }
-  }, [photos, currentIndex]);
+  }, [photos, currentIndex, toast]);
   
   // Set up real-time listener for new photos
   useEffect(() => {
@@ -106,6 +114,12 @@ const Slideshow: React.FC<SlideshowProps> = ({
               metadata: payload.new.metadata,
             };
             setPhotos(prevPhotos => [...prevPhotos, newPhoto]);
+            
+            // Notify user
+            toast({
+              title: "Photo Approved",
+              description: "A new photo has been approved and added to the slideshow",
+            });
           }
           // If photo was unapproved, remove it from the slideshow
           else if (payload.new && payload.old && payload.old.approved && !payload.new.approved) {
@@ -142,13 +156,20 @@ const Slideshow: React.FC<SlideshowProps> = ({
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`Slideshow: Subscription status: ${status}`);
+        if (status === 'SUBSCRIBED') {
+          console.log('Slideshow: Successfully subscribed to real-time updates');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('Slideshow: Error subscribing to real-time updates');
+        }
+      });
       
     return () => {
       console.log("Slideshow: Cleaning up real-time subscription");
       supabase.removeChannel(channel);
     };
-  }, [albumId, currentIndex]);
+  }, [albumId, currentIndex, toast]);
   
   const goBack = () => {
     navigate(`/album/${albumId}`);

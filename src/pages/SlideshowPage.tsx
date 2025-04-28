@@ -2,12 +2,12 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Slideshow from "@/components/Slideshow";
-import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { supabaseService } from "@/lib/supabase-service";
 import { Photo } from "@/types";
 import { ArrowLeft } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const SlideshowPage: React.FC = () => {
   const { albumId } = useParams<{ albumId: string }>();
@@ -16,7 +16,9 @@ const SlideshowPage: React.FC = () => {
   
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updateSignal, setUpdateSignal] = useState(0);
   
+  // Load initial photos
   useEffect(() => {
     if (!albumId) {
       console.error("Album ID is missing");
@@ -46,6 +48,48 @@ const SlideshowPage: React.FC = () => {
     loadPhotos();
   }, [albumId, navigate, toast]);
   
+  // Set up real-time listener for updates specifically for this page
+  useEffect(() => {
+    if (!albumId) return;
+    
+    console.log("SlideshowPage: Setting up real-time subscription");
+    
+    const channel = supabase
+      .channel('slideshowpage-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen for all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'photos',
+          filter: `album_id=eq.${albumId}`,
+        },
+        (payload) => {
+          console.log("SlideshowPage: Database change detected:", payload);
+          
+          // Refresh photos list when any change is detected
+          // This is a backup to ensure the slideshow component gets the latest data
+          supabaseService.getApprovedPhotosByAlbumId(albumId)
+            .then(updatedPhotos => {
+              console.log("SlideshowPage: Refreshed photos from database:", updatedPhotos.length);
+              setPhotos(updatedPhotos);
+              setUpdateSignal(prev => prev + 1);
+            })
+            .catch(error => {
+              console.error("Error refreshing photos:", error);
+            });
+        }
+      )
+      .subscribe((status) => {
+        console.log(`SlideshowPage: Subscription status: ${status}`);
+      });
+      
+    return () => {
+      console.log("SlideshowPage: Cleaning up real-time subscription");
+      supabase.removeChannel(channel);
+    };
+  }, [albumId]);
+  
   const handleGoBack = () => {
     navigate(`/album/${albumId}`);
   };
@@ -67,6 +111,7 @@ const SlideshowPage: React.FC = () => {
       <Slideshow 
         photos={photos} 
         albumId={albumId || ""}
+        updateSignal={updateSignal}
       />
     </div>
   );
