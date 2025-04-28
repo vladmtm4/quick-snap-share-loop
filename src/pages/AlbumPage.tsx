@@ -12,6 +12,7 @@ import { Upload, Camera, PlusCircle, Users, QrCode, Share, UserPlus } from "luci
 import AlbumQRCode from "@/components/AlbumQRCode";
 import AlbumShareLink from "@/components/AlbumShareLink";
 import GuestRegistration from "@/components/GuestRegistration";
+import GuestRegistrationLink from "@/components/GuestRegistrationLink";
 
 function AlbumPage() {
   const { albumId } = useParams<{ albumId: string }>();
@@ -138,6 +139,8 @@ function AlbumPage() {
             </Button>
           )}
 
+          <GuestRegistrationLink albumId={albumId || ""} />
+          
           <Button
             variant="outline"
             onClick={() => setShowGuestRegistration(!showGuestRegistration)}
