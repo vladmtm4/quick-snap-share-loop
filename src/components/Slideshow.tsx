@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Play, Pause } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Photo } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SlideshowProps {
   photos: Photo[];
@@ -13,48 +15,36 @@ interface SlideshowProps {
 }
 
 const Slideshow: React.FC<SlideshowProps> = ({ 
-  photos, 
+  photos: initialPhotos, 
   albumId,
   autoRefresh = true, 
   interval = 8000, // 8 seconds interval
   updateSignal = 0
 }) => {
+  const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
-  const prevPhotoCount = useRef(photos.length);
-  const photosRef = useRef<Photo[]>(photos);
+  const prevPhotoCount = useRef(initialPhotos.length);
   const navigate = useNavigate();
   
-  // Update the ref when photos change
+  // Update photos state when props change
   useEffect(() => {
-    photosRef.current = photos;
-    console.log(`Slideshow photos updated: ${photos.length} photos available`);
-  }, [photos]);
+    console.log(`Slideshow: Received ${initialPhotos.length} photos from props`);
+    setPhotos(initialPhotos);
+  }, [initialPhotos, updateSignal]);
   
-  // Add logging when photos prop changes
+  // Effect to handle changes in the photos array
   useEffect(() => {
-    console.log(`Slideshow component received ${photos.length} photos (previous: ${prevPhotoCount.current})`);
+    console.log(`Slideshow: Photos array changed - now ${photos.length} photos`);
     
-    // Handle changes in the photos array while preserving current position
+    // If new photos were added and we're already at the end, we might want to let the slideshow continue
     if (photos.length !== prevPhotoCount.current) {
-      console.log(`Photo bucket size changed: ${prevPhotoCount.current} -> ${photos.length}`);
+      console.log(`Slideshow: Photo count changed: ${prevPhotoCount.current} -> ${photos.length}`);
       
-      // If new photos were added and we're already at the end, we might want to let the slideshow
-      // continue from current position instead of jumping
-      if (photos.length > prevPhotoCount.current) {
-        console.log("New photos have been added to the slideshow");
-        // Keep the current index unless it's now out of bounds
-        if (currentIndex >= photos.length) {
-          console.log("Current index out of bounds, resetting to 0");
-          setCurrentIndex(0);
-        } else {
-          console.log(`Maintaining current position at index ${currentIndex}`);
-          // We keep the current index (no need to update it)
-        }
-      } else if (photos.length < prevPhotoCount.current) {
-        // If photos were removed, ensure current index is valid
+      // If photos were removed, ensure current index is valid
+      if (photos.length < prevPhotoCount.current) {
         if (currentIndex >= photos.length && photos.length > 0) {
-          console.log("Current index out of bounds after photos were removed, adjusting");
+          console.log("Slideshow: Current index out of bounds after photos were removed, adjusting");
           setCurrentIndex(Math.max(photos.length - 1, 0));
         }
       }
@@ -62,26 +52,120 @@ const Slideshow: React.FC<SlideshowProps> = ({
       // Update our reference
       prevPhotoCount.current = photos.length;
     }
-  }, [photos, updateSignal, currentIndex]);
+  }, [photos, currentIndex]);
+  
+  // Set up real-time listener for new photos
+  useEffect(() => {
+    console.log("Slideshow: Setting up real-time subscription for album:", albumId);
+    
+    const channel = supabase
+      .channel('slideshow-photos-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'photos',
+          filter: `album_id=eq.${albumId}`,
+        },
+        (payload) => {
+          console.log("Slideshow: New photo inserted:", payload);
+          if (payload.new && payload.new.approved === true) {
+            const newPhoto: Photo = {
+              id: payload.new.id,
+              albumId: payload.new.album_id,
+              url: payload.new.url,
+              thumbnailUrl: payload.new.thumbnail_url,
+              createdAt: payload.new.created_at,
+              approved: payload.new.approved,
+              metadata: payload.new.metadata,
+            };
+            setPhotos(prevPhotos => [...prevPhotos, newPhoto]);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'photos',
+          filter: `album_id=eq.${albumId}`,
+        },
+        (payload) => {
+          console.log("Slideshow: Photo updated:", payload);
+          // If photo was just approved, add it to the slideshow
+          if (payload.new && payload.old && !payload.old.approved && payload.new.approved) {
+            const newPhoto: Photo = {
+              id: payload.new.id,
+              albumId: payload.new.album_id,
+              url: payload.new.url,
+              thumbnailUrl: payload.new.thumbnail_url,
+              createdAt: payload.new.created_at,
+              approved: payload.new.approved,
+              metadata: payload.new.metadata,
+            };
+            setPhotos(prevPhotos => [...prevPhotos, newPhoto]);
+          }
+          // If photo was unapproved, remove it from the slideshow
+          else if (payload.new && payload.old && payload.old.approved && !payload.new.approved) {
+            setPhotos(prevPhotos => {
+              const filtered = prevPhotos.filter(photo => photo.id !== payload.new.id);
+              // If we're viewing the photo that was just removed, go to the previous one
+              if (currentIndex >= filtered.length && filtered.length > 0) {
+                setCurrentIndex(Math.max(filtered.length - 1, 0));
+              }
+              return filtered;
+            });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'photos',
+          filter: `album_id=eq.${albumId}`,
+        },
+        (payload) => {
+          console.log("Slideshow: Photo deleted:", payload);
+          if (payload.old) {
+            setPhotos(prevPhotos => {
+              const filtered = prevPhotos.filter(photo => photo.id !== payload.old.id);
+              // If we're viewing the photo that was just deleted, go to the previous one
+              if (currentIndex >= filtered.length && filtered.length > 0) {
+                setCurrentIndex(Math.max(filtered.length - 1, 0));
+              }
+              return filtered;
+            });
+          }
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      console.log("Slideshow: Cleaning up real-time subscription");
+      supabase.removeChannel(channel);
+    };
+  }, [albumId, currentIndex]);
   
   const goBack = () => {
     navigate(`/album/${albumId}`);
   };
   
   const goToNextSlide = useCallback(() => {
-    if (photosRef.current.length === 0) return;
+    if (photos.length === 0) return;
     
     setCurrentIndex((prevIndex) => {
-      const newIndex = (prevIndex + 1) % photosRef.current.length;
-      console.log(`Moving to next slide: ${prevIndex} -> ${newIndex}`);
+      const newIndex = (prevIndex + 1) % photos.length;
       return newIndex;
     });
-  }, []);
+  }, [photos.length]);
   
   // Handle auto-advancing slides when playing
   useEffect(() => {
     if (isPlaying && photos.length > 0) {
-      console.log(`Setting up timer for ${interval}ms, current index: ${currentIndex}, total photos: ${photos.length}`);
       const timer = setTimeout(goToNextSlide, interval);
       return () => clearTimeout(timer);
     }

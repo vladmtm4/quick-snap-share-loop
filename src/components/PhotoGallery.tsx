@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabaseService } from "@/lib/supabase-service";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,24 +19,25 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ albumId }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   
+  const loadPhotos = useCallback(async () => {
+    try {
+      setLoading(true);
+      const approvedPhotos = await supabaseService.getApprovedPhotosByAlbumId(albumId);
+      console.log(`PhotoGallery: Loaded ${approvedPhotos.length} approved photos`);
+      setPhotos(approvedPhotos);
+    } catch (error) {
+      console.error("Error loading photos:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load photos. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [albumId, toast]);
+  
   useEffect(() => {
-    const loadPhotos = async () => {
-      try {
-        setLoading(true);
-        const approvedPhotos = await supabaseService.getApprovedPhotosByAlbumId(albumId);
-        setPhotos(approvedPhotos);
-      } catch (error) {
-        console.error("Error loading photos:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load photos. Please try again later.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     loadPhotos();
     
     // Set up a subscription to watch for new photos
@@ -45,14 +46,71 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ albumId }) => {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'photos',
           filter: `album_id=eq.${albumId}`,
         },
-        () => {
-          // Reload photos when changes are detected
-          loadPhotos();
+        (payload) => {
+          console.log("PhotoGallery: New photo inserted:", payload);
+          if (payload.new && payload.new.approved === true) {
+            // Add the new photo to the list if it's already approved
+            const newPhoto: Photo = {
+              id: payload.new.id,
+              albumId: payload.new.album_id,
+              url: payload.new.url,
+              thumbnailUrl: payload.new.thumbnail_url,
+              createdAt: payload.new.created_at,
+              approved: payload.new.approved,
+              metadata: payload.new.metadata,
+            };
+            setPhotos(prevPhotos => [...prevPhotos, newPhoto]);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'photos',
+          filter: `album_id=eq.${albumId}`,
+        },
+        (payload) => {
+          console.log("PhotoGallery: Photo updated:", payload);
+          // If photo was just approved, add it to the gallery
+          if (payload.new && payload.old && !payload.old.approved && payload.new.approved) {
+            const newPhoto: Photo = {
+              id: payload.new.id,
+              albumId: payload.new.album_id,
+              url: payload.new.url,
+              thumbnailUrl: payload.new.thumbnail_url,
+              createdAt: payload.new.created_at,
+              approved: payload.new.approved,
+              metadata: payload.new.metadata,
+            };
+            setPhotos(prevPhotos => [...prevPhotos, newPhoto]);
+          } 
+          // If photo was unapproved, remove it from the gallery
+          else if (payload.new && payload.old && payload.old.approved && !payload.new.approved) {
+            setPhotos(prevPhotos => prevPhotos.filter(photo => photo.id !== payload.new.id));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'photos',
+          filter: `album_id=eq.${albumId}`,
+        },
+        (payload) => {
+          console.log("PhotoGallery: Photo deleted:", payload);
+          // Remove the deleted photo from the list
+          if (payload.old) {
+            setPhotos(prevPhotos => prevPhotos.filter(photo => photo.id !== payload.old.id));
+          }
         }
       )
       .subscribe();
@@ -60,13 +118,13 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ albumId }) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [albumId, toast]);
+  }, [albumId, loadPhotos]);
   
   const handleViewSlideshow = () => {
     navigate(`/slideshow/${albumId}`);
   };
   
-  if (loading) {
+  if (loading && photos.length === 0) {
     return (
       <div className="flex justify-center items-center p-8">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
