@@ -23,7 +23,7 @@ const GuestRegistrationLink: React.FC<GuestRegistrationLinkProps> = ({ albumId }
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
   
-  const shareLink = `${window.location.origin}/album/${albumId}`;
+  const shareLink = `${window.location.origin}/register/${albumId}`;
   
   const copyToClipboard = () => {
     navigator.clipboard.writeText(shareLink)

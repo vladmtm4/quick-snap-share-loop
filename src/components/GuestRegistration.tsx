@@ -10,9 +10,10 @@ import { Upload } from "lucide-react";
 
 interface GuestRegistrationProps {
   albumId: string;
+  onRegistrationComplete?: () => void;
 }
 
-const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId }) => {
+const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId, onRegistrationComplete }) => {
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -67,6 +68,11 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId }) => {
       // Clear form
       setName("");
       setPhotoFile(null);
+      
+      // Call the completion callback if provided
+      if (onRegistrationComplete) {
+        onRegistrationComplete();
+      }
 
     } catch (error) {
       console.error('Error registering guest:', error);
