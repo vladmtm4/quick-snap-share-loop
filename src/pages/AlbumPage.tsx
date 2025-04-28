@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import AlbumQRCode from "@/components/AlbumQRCode";
 import AlbumShareLink from "@/components/AlbumShareLink";
 import GuestRegistration from "@/components/GuestRegistration";
 import GuestRegistrationLink from "@/components/GuestRegistrationLink";
+import PhotoGallery from "@/components/PhotoGallery";
 
 function AlbumPage() {
   const { albumId } = useParams<{ albumId: string }>();
@@ -169,7 +171,7 @@ function AlbumPage() {
         </TabsList>
 
         <TabsContent value="all" className="mt-2">
-          {/* Photo gallery goes here */}
+          <PhotoGallery albumId={albumId || ""} />
         </TabsContent>
 
         {album.moderationEnabled && album.ownerId === user?.id && (
