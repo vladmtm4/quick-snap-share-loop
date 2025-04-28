@@ -12,6 +12,7 @@ type GuestDatabaseResponse = {
   created_at: string | null;
   assigned: boolean | null;
   photo_url: string | null;
+  instagram: string | null;
 };
 
 export const guestService = {
@@ -38,7 +39,8 @@ export const guestService = {
         approved: item.approved,
         created_at: item.created_at,
         assigned: item.assigned || false,
-        photoUrl: item.photo_url || undefined
+        photoUrl: item.photo_url || undefined,
+        instagram: item.instagram || undefined
       }));
       
       return { data: guests, error: null };
@@ -122,7 +124,8 @@ export const guestService = {
             approved: lastResortQuery.data.approved,
             created_at: lastResortQuery.data.created_at,
             assigned: true,
-            photoUrl: lastResortQuery.data.photo_url || undefined
+            photoUrl: lastResortQuery.data.photo_url || undefined,
+            instagram: lastResortQuery.data.instagram || undefined
           };
             
           return { data: guest, error: null };
@@ -144,7 +147,8 @@ export const guestService = {
           approved: resetData.approved,
           created_at: resetData.created_at,
           assigned: true,
-          photoUrl: resetData.photo_url || undefined
+          photoUrl: resetData.photo_url || undefined,
+          instagram: resetData.instagram || undefined
         };
           
         return { data: guest, error: null };
@@ -162,7 +166,8 @@ export const guestService = {
         approved: data.approved,
         created_at: data.created_at,
         assigned: true,
-        photoUrl: data.photo_url || undefined
+        photoUrl: data.photo_url || undefined,
+        instagram: data.instagram || undefined
       };
       
       return { data: guest, error: null };
@@ -200,7 +205,8 @@ export const guestService = {
         approved: data.approved,
         created_at: data.created_at,
         assigned: data.assigned || false,
-        photoUrl: data.photo_url || undefined
+        photoUrl: data.photo_url || undefined,
+        instagram: data.instagram || undefined
       };
       
       return { data: guest, error: null };
@@ -240,7 +246,8 @@ export const guestService = {
             approved: data.approved,
             created_at: data.created_at,
             assigned: true,
-            photoUrl: data.photo_url || undefined
+            photoUrl: data.photo_url || undefined,
+            instagram: data.instagram || undefined
           };
           
           return { data: guest, error: null };
@@ -474,5 +481,36 @@ export const guestService = {
   generateShareLink(albumId: string, guestId: string): string {
     const baseUrl = window.location.origin;
     return `${baseUrl}/guest/${albumId}/${guestId}`;
+  },
+  
+  async uploadImageToStorage(guestId: string, file: File, filePath: string): Promise<{ url: string } | null> {
+    console.log("Uploading guest profile image:", guestId, filePath);
+    
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(filePath, file);
+      
+      if (uploadError) {
+        console.error("Error uploading guest profile image:", uploadError);
+        throw uploadError;
+      }
+      
+      const { data: urlData } = supabase.storage
+        .from('photos')
+        .getPublicUrl(filePath);
+      
+      if (!urlData || !urlData.publicUrl) {
+        console.error("Could not get public URL for uploaded image");
+        return null;
+      }
+      
+      return {
+        url: urlData.publicUrl
+      };
+    } catch (error) {
+      console.error("Error in uploadImageToStorage:", error);
+      return null;
+    }
   }
 };
