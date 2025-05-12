@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Slideshow from "@/components/Slideshow";
@@ -56,62 +57,36 @@ const SlideshowPage: React.FC = () => {
     
     console.log("SlideshowPage: Setting up real-time subscription for album:", albumId);
     
-    // Create a dedicated channel for this slideshow page
+    // Create a channel specifically for this slideshow
     const channel = supabase
-      .channel(`slideshow-updates-${albumId}`)
+      .channel(`slideshow-updates-${albumId}-${Date.now()}`) // Added timestamp to make channel name unique
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*', // Listen for all events (INSERT, UPDATE, DELETE)
           schema: 'public',
           table: 'photos',
           filter: `album_id=eq.${albumId}`,
         },
         (payload) => {
-          console.log("SlideshowPage: New photo inserted:", payload);
-          // If the new photo is already approved, add it to the slideshow immediately
-          if (payload.new && payload.new.approved === true) {
-            console.log("SlideshowPage: New approved photo detected, adding to slideshow");
-            loadPhotos();
+          console.log("SlideshowPage: Photo change detected:", payload);
+          // Reload photos for any change to ensure we have the latest data
+          loadPhotos();
+          
+          // Show toast notification based on event type
+          if (payload.eventType === 'INSERT' && payload.new?.approved === true) {
             toast({
               title: "New Photo",
               description: "A new photo has been added to the slideshow",
             });
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'photos',
-          filter: `album_id=eq.${albumId}`,
-        },
-        (payload) => {
-          console.log("SlideshowPage: Photo updated:", payload);
-          // If photo was just approved, refresh the slideshow
-          if (payload.new && payload.old && !payload.old.approved && payload.new.approved) {
-            console.log("SlideshowPage: Photo was just approved, refreshing slideshow");
-            loadPhotos();
+          } else if (payload.eventType === 'UPDATE' && 
+                   payload.old?.approved === false && 
+                   payload.new?.approved === true) {
             toast({
               title: "New Photo",
               description: "A new photo has been approved and added to the slideshow",
             });
           }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'photos',
-          filter: `album_id=eq.${albumId}`,
-        },
-        (payload) => {
-          console.log("SlideshowPage: Photo deleted:", payload);
-          loadPhotos();
         }
       )
       .subscribe((status) => {
@@ -146,7 +121,7 @@ const SlideshowPage: React.FC = () => {
         photos={photos} 
         albumId={albumId || ""}
         updateSignal={updateSignal}
-        interval={5000} // Set interval to 5 seconds explicitly
+        interval={5000}
       />
     </div>
   );

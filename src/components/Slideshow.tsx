@@ -18,78 +18,66 @@ const Slideshow: React.FC<SlideshowProps> = ({
   photos: initialPhotos, 
   albumId,
   autoRefresh = true, 
-  interval = 5000, // Changed from 8000 to 5000 (5 seconds)
+  interval = 5000,
   updateSignal = 0
 }) => {
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
-  const prevPhotoCount = useRef(initialPhotos.length);
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Update photos state when props change
-  useEffect(() => {
-    console.log(`Slideshow: Received ${initialPhotos.length} photos from props`);
-    
-    // Directly update photos array when new data comes in
-    if (initialPhotos.length > 0) {
-      setPhotos(initialPhotos);
-    }
-  }, [initialPhotos, updateSignal]);
+  // Use a ref to keep track of photo IDs for quick comparison
+  const photoIdsRef = useRef<Set<string>>(new Set());
   
-  // Insert a new photo at a random position in the array
-  const insertPhotoRandomly = useCallback((newPhoto: Photo) => {
-    setPhotos(prevPhotos => {
-      // Create a copy of the current photos array
-      const updatedPhotos = [...prevPhotos];
-      
-      // Generate a random position (including beginning and end)
-      const randomPosition = Math.floor(Math.random() * (updatedPhotos.length + 1));
-      
-      // Insert the new photo at the random position
-      updatedPhotos.splice(randomPosition, 0, newPhoto);
-      
-      console.log(`Slideshow: Inserted new photo at position ${randomPosition} of ${updatedPhotos.length}`);
-      return updatedPhotos;
-    });
-  }, []);
-  
-  // Effect to handle changes in the photos array
+  // Update photos state when props change or updateSignal changes
   useEffect(() => {
-    console.log(`Slideshow: Photos array changed - now ${photos.length} photos`);
+    console.log(`Slideshow: Received ${initialPhotos.length} photos from props (updateSignal: ${updateSignal})`);
     
-    // If new photos were added and we're already at the end, we might want to let the slideshow continue
-    if (photos.length !== prevPhotoCount.current) {
-      console.log(`Slideshow: Photo count changed: ${prevPhotoCount.current} -> ${photos.length}`);
-      
-      // If photos were removed, ensure current index is valid
-      if (photos.length < prevPhotoCount.current) {
-        if (currentIndex >= photos.length && photos.length > 0) {
-          console.log("Slideshow: Current index out of bounds after photos were removed, adjusting");
-          setCurrentIndex(Math.max(photos.length - 1, 0));
+    // Check if the photos array has actually changed
+    const newPhotoIds = new Set(initialPhotos.map(photo => photo.id));
+    const currentPhotoIds = photoIdsRef.current;
+    
+    // Compare photo IDs to see if we have changes
+    let hasChanges = initialPhotos.length !== photos.length;
+    
+    if (!hasChanges) {
+      // Check if there are any new IDs that weren't in our previous set
+      initialPhotos.forEach(photo => {
+        if (!currentPhotoIds.has(photo.id)) {
+          hasChanges = true;
         }
-      } else if (photos.length > prevPhotoCount.current) {
-        // New photo was added - notify user
+      });
+    }
+    
+    if (hasChanges || updateSignal > 0) {
+      console.log('Slideshow: Photos array has changed, updating...');
+      setPhotos(initialPhotos);
+      
+      // Update our ref with the new photo IDs
+      photoIdsRef.current = newPhotoIds;
+      
+      // If we had photos before and now have more, it means new photos were added
+      if (photos.length > 0 && initialPhotos.length > photos.length) {
         toast({
-          title: "New Photo",
-          description: "A new photo has been added to the slideshow",
+          title: "Photos Updated",
+          description: "The slideshow has been updated with new photos",
         });
       }
-      
-      // Update our reference
-      prevPhotoCount.current = photos.length;
     }
-  }, [photos, currentIndex, toast]);
+  }, [initialPhotos, updateSignal, toast, photos.length]);
   
-  // Set up real-time listener for photo updates
+  // Set up direct real-time listener in the Slideshow component as a backup
   useEffect(() => {
     if (!albumId) return;
     
-    console.log("Slideshow: Setting up real-time subscription for photo changes");
+    console.log("Slideshow: Setting up backup real-time subscription for photo changes");
+    
+    const channelName = `slideshow-photos-${albumId}-${Date.now()}`;
+    console.log(`Slideshow: Creating backup channel: ${channelName}`);
     
     const channel = supabase
-      .channel(`slideshow-photos-${albumId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -101,24 +89,31 @@ const Slideshow: React.FC<SlideshowProps> = ({
         (payload) => {
           console.log("Slideshow: New approved photo inserted:", payload);
           if (payload.new) {
-            // Create a photo object from the payload
-            const newPhoto: Photo = {
-              id: payload.new.id,
-              albumId: payload.new.album_id,
-              url: payload.new.url,
-              thumbnailUrl: payload.new.thumbnail_url,
-              createdAt: payload.new.created_at,
-              approved: payload.new.approved,
-              metadata: payload.new.metadata,
-            };
-            
-            // Insert the new photo at a random position
-            insertPhotoRandomly(newPhoto);
-            
-            toast({
-              title: "New Photo",
-              description: "A new photo has been added to the slideshow",
-            });
+            // Check if we already have this photo
+            if (!photoIdsRef.current.has(payload.new.id)) {
+              // Create a photo object from the payload
+              const newPhoto: Photo = {
+                id: payload.new.id,
+                albumId: payload.new.album_id,
+                url: payload.new.url,
+                thumbnailUrl: payload.new.thumbnail_url,
+                createdAt: payload.new.created_at,
+                approved: payload.new.approved,
+                metadata: payload.new.metadata,
+              };
+              
+              // Add the photo to the state
+              setPhotos(prevPhotos => {
+                const updatedPhotos = [...prevPhotos, newPhoto];
+                photoIdsRef.current.add(newPhoto.id); // Update our ID tracking
+                return updatedPhotos;
+              });
+              
+              toast({
+                title: "New Photo",
+                description: "A new photo has been added to the slideshow",
+              });
+            }
           }
         }
       )
@@ -132,31 +127,42 @@ const Slideshow: React.FC<SlideshowProps> = ({
         },
         (payload) => {
           console.log("Slideshow: Photo updated:", payload);
-          // If photo was just approved, add it to the slideshow at a random position
+          // If photo was just approved, add it to the slideshow
           if (payload.new && payload.old && !payload.old.approved && payload.new.approved) {
             console.log("Slideshow: Photo was just approved, adding to slideshow");
             
-            const newPhoto: Photo = {
-              id: payload.new.id,
-              albumId: payload.new.album_id,
-              url: payload.new.url,
-              thumbnailUrl: payload.new.thumbnail_url,
-              createdAt: payload.new.created_at,
-              approved: payload.new.approved,
-              metadata: payload.new.metadata,
-            };
-            
-            // Insert the new photo at a random position
-            insertPhotoRandomly(newPhoto);
-            
-            toast({
-              title: "New Photo",
-              description: "A new photo has been approved and added to the slideshow",
-            });
+            // Check if we already have this photo
+            if (!photoIdsRef.current.has(payload.new.id)) {
+              const newPhoto: Photo = {
+                id: payload.new.id,
+                albumId: payload.new.album_id,
+                url: payload.new.url,
+                thumbnailUrl: payload.new.thumbnail_url,
+                createdAt: payload.new.created_at,
+                approved: payload.new.approved,
+                metadata: payload.new.metadata,
+              };
+              
+              // Add the photo to the state
+              setPhotos(prevPhotos => {
+                const updatedPhotos = [...prevPhotos, newPhoto];
+                photoIdsRef.current.add(newPhoto.id); // Update our ID tracking
+                return updatedPhotos;
+              });
+              
+              toast({
+                title: "New Photo",
+                description: "A new photo has been approved and added to the slideshow",
+              });
+            }
           }
           // If photo was unapproved, remove it from the slideshow
           else if (payload.new && payload.old && payload.old.approved && !payload.new.approved) {
-            setPhotos(prevPhotos => prevPhotos.filter(photo => photo.id !== payload.new.id));
+            setPhotos(prevPhotos => {
+              const updatedPhotos = prevPhotos.filter(photo => photo.id !== payload.new.id);
+              photoIdsRef.current.delete(payload.new.id); // Update our ID tracking
+              return updatedPhotos;
+            });
           }
         }
       )
@@ -171,19 +177,23 @@ const Slideshow: React.FC<SlideshowProps> = ({
         (payload) => {
           console.log("Slideshow: Photo deleted:", payload);
           if (payload.old) {
-            setPhotos(prevPhotos => prevPhotos.filter(photo => photo.id !== payload.old.id));
+            setPhotos(prevPhotos => {
+              const updatedPhotos = prevPhotos.filter(photo => photo.id !== payload.old.id);
+              photoIdsRef.current.delete(payload.old.id); // Update our ID tracking
+              return updatedPhotos;
+            });
           }
         }
       )
       .subscribe((status) => {
-        console.log(`Slideshow: Supabase subscription status: ${status}`);
+        console.log(`Slideshow: Backup subscription status: ${status}`);
       });
       
     return () => {
-      console.log("Slideshow: Cleaning up real-time subscription");
+      console.log("Slideshow: Cleaning up backup real-time subscription");
       supabase.removeChannel(channel);
     };
-  }, [albumId, toast, insertPhotoRandomly]);
+  }, [albumId, toast]);
   
   const goBack = () => {
     navigate(`/album/${albumId}`);
@@ -210,6 +220,13 @@ const Slideshow: React.FC<SlideshowProps> = ({
   const togglePlayPause = () => {
     setIsPlaying(!isPlaying);
   };
+  
+  // Reset current index if it goes out of bounds when photos array changes
+  useEffect(() => {
+    if (photos.length > 0 && currentIndex >= photos.length) {
+      setCurrentIndex(0);
+    }
+  }, [photos.length, currentIndex]);
   
   if (photos.length === 0) {
     return (
