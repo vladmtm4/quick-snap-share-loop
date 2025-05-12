@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -82,7 +81,10 @@ const GuestSelfieShare = () => {
     const loadModels = async () => {
       try {
         setModelsLoading(true);
-        const MODEL_URL = '/models';
+        // Use absolute path to ensure models are found regardless of the current route
+        const MODEL_URL = `${window.location.origin}/models`;
+        
+        console.log("Loading models from:", MODEL_URL);
         
         toast({
           title: "Loading face detection models",
