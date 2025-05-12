@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Slideshow from "@/components/Slideshow";
@@ -16,7 +15,6 @@ const SlideshowPage: React.FC = () => {
   
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [updateSignal, setUpdateSignal] = useState(0);
   
   // Function to load photos that can be called anytime we need fresh data
   const loadPhotos = useCallback(async () => {
@@ -68,10 +66,23 @@ const SlideshowPage: React.FC = () => {
         },
         (payload) => {
           console.log("SlideshowPage: New photo inserted:", payload);
-          // If the new photo is already approved, add it to the slideshow immediately
           if (payload.new && payload.new.approved === true) {
-            console.log("SlideshowPage: New approved photo detected, adding to slideshow");
-            loadPhotos();
+            console.log("SlideshowPage: New approved photo detected, inserting randomly into slideshow");
+            const newPhoto: Photo = {
+              id: payload.new.id,
+              albumId: payload.new.album_id,
+              url: payload.new.url,
+              thumbnailUrl: payload.new.thumbnail_url,
+              createdAt: payload.new.created_at,
+              approved: payload.new.approved,
+              metadata: payload.new.metadata,
+            };
+            setPhotos(prev => {
+              const updated = [...prev];
+              const idx = Math.floor(Math.random() * (updated.length + 1));
+              updated.splice(idx, 0, newPhoto);
+              return updated;
+            });
             toast({
               title: "New Photo",
               description: "A new photo has been added to the slideshow",
@@ -89,10 +100,23 @@ const SlideshowPage: React.FC = () => {
         },
         (payload) => {
           console.log("SlideshowPage: Photo updated:", payload);
-          // If photo was just approved, refresh the slideshow
           if (payload.new && payload.old && !payload.old.approved && payload.new.approved) {
-            console.log("SlideshowPage: Photo was just approved, refreshing slideshow");
-            loadPhotos();
+            console.log("SlideshowPage: Photo was just approved, inserting randomly");
+            const newPhoto: Photo = {
+              id: payload.new.id,
+              albumId: payload.new.album_id,
+              url: payload.new.url,
+              thumbnailUrl: payload.new.thumbnail_url,
+              createdAt: payload.new.created_at,
+              approved: payload.new.approved,
+              metadata: payload.new.metadata,
+            };
+            setPhotos(prev => {
+              const updated = [...prev];
+              const idx = Math.floor(Math.random() * (updated.length + 1));
+              updated.splice(idx, 0, newPhoto);
+              return updated;
+            });
             toast({
               title: "New Photo",
               description: "A new photo has been approved and added to the slideshow",
@@ -110,7 +134,7 @@ const SlideshowPage: React.FC = () => {
         },
         (payload) => {
           console.log("SlideshowPage: Photo deleted:", payload);
-          loadPhotos();
+          setPhotos(prev => prev.filter(photo => photo.id !== payload.old?.id));
         }
       )
       .subscribe((status) => {
@@ -144,7 +168,7 @@ const SlideshowPage: React.FC = () => {
       <Slideshow 
         photos={photos} 
         albumId={albumId || ""}
-        updateSignal={updateSignal}
+        interval={5000}
       />
     </div>
   );
