@@ -16,7 +16,6 @@ const SlideshowPage: React.FC = () => {
   
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [updateSignal, setUpdateSignal] = useState(0);
   
   // Function to load photos that can be called anytime we need fresh data
   const loadPhotos = useCallback(async () => {
@@ -32,8 +31,6 @@ const SlideshowPage: React.FC = () => {
       const approvedPhotos = await supabaseService.getApprovedPhotosByAlbumId(albumId);
       console.log("SlideshowPage: Approved photos loaded:", approvedPhotos.length);
       setPhotos(approvedPhotos);
-      // Force re-render of slideshow when we load new photos
-      setUpdateSignal(prev => prev + 1);
     } catch (error) {
       console.error("Error loading photos:", error);
       toast({
@@ -57,9 +54,11 @@ const SlideshowPage: React.FC = () => {
     
     console.log("SlideshowPage: Setting up real-time subscription for album:", albumId);
     
-    // Create a channel specifically for this slideshow
+    // Create a unique channel name with timestamp to avoid conflicts
+    const channelName = `slideshow-updates-${albumId}-${Date.now()}`;
+    
     const channel = supabase
-      .channel(`slideshow-updates-${albumId}-${Date.now()}`) // Added timestamp to make channel name unique
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -70,7 +69,7 @@ const SlideshowPage: React.FC = () => {
         },
         (payload) => {
           console.log("SlideshowPage: Photo change detected:", payload);
-          // Reload photos for any change to ensure we have the latest data
+          // For any change to photos table, refresh the data
           loadPhotos();
           
           // Show toast notification based on event type
@@ -120,8 +119,7 @@ const SlideshowPage: React.FC = () => {
       <Slideshow 
         photos={photos} 
         albumId={albumId || ""}
-        updateSignal={updateSignal}
-        interval={5000}
+        loadPhotos={loadPhotos}
       />
     </div>
   );
