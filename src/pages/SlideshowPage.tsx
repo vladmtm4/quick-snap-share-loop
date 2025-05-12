@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Slideshow from "@/components/Slideshow";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { supabaseService } from "@/lib/supabase-service";
 import { Photo } from "@/types";
 import { ArrowLeft } from "lucide-react";
@@ -18,77 +18,110 @@ const SlideshowPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [updateSignal, setUpdateSignal] = useState(0);
   
-  // Load initial photos
-  useEffect(() => {
+  // Function to load photos that can be called anytime we need fresh data
+  const loadPhotos = useCallback(async () => {
     if (!albumId) {
       console.error("Album ID is missing");
       navigate("/");
       return;
     }
     
-    async function loadPhotos() {
-      try {
-        setLoading(true);
-        console.log("SlideshowPage: Loading approved photos for album:", albumId);
-        const approvedPhotos = await supabaseService.getApprovedPhotosByAlbumId(albumId);
-        console.log("SlideshowPage: Approved photos loaded:", approvedPhotos.length);
-        setPhotos(approvedPhotos);
-      } catch (error) {
-        console.error("Error loading photos:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load photos. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
+    try {
+      setLoading(true);
+      console.log("SlideshowPage: Loading approved photos for album:", albumId);
+      const approvedPhotos = await supabaseService.getApprovedPhotosByAlbumId(albumId);
+      console.log("SlideshowPage: Approved photos loaded:", approvedPhotos.length);
+      setPhotos(approvedPhotos);
+    } catch (error) {
+      console.error("Error loading photos:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load photos. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-    
-    loadPhotos();
   }, [albumId, navigate, toast]);
   
-  // Set up real-time listener for updates specifically for this page
+  // Load initial photos
+  useEffect(() => {
+    loadPhotos();
+  }, [loadPhotos]);
+  
+  // Set up real-time listener for updates
   useEffect(() => {
     if (!albumId) return;
     
-    console.log("SlideshowPage: Setting up real-time subscription");
+    console.log("SlideshowPage: Setting up real-time subscription for album:", albumId);
     
+    // Create a dedicated channel for this slideshow page
     const channel = supabase
-      .channel('slideshowpage-updates')
+      .channel(`slideshow-updates-${albumId}`)
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen for all events (INSERT, UPDATE, DELETE)
+          event: 'INSERT',
           schema: 'public',
           table: 'photos',
           filter: `album_id=eq.${albumId}`,
         },
         (payload) => {
-          console.log("SlideshowPage: Database change detected:", payload);
-          
-          // Refresh photos list when any change is detected
-          // This is a backup to ensure the slideshow component gets the latest data
-          supabaseService.getApprovedPhotosByAlbumId(albumId)
-            .then(updatedPhotos => {
-              console.log("SlideshowPage: Refreshed photos from database:", updatedPhotos.length);
-              setPhotos(updatedPhotos);
-              setUpdateSignal(prev => prev + 1);
-            })
-            .catch(error => {
-              console.error("Error refreshing photos:", error);
+          console.log("SlideshowPage: New photo inserted:", payload);
+          // If the new photo is already approved, add it to the slideshow immediately
+          if (payload.new && payload.new.approved === true) {
+            console.log("SlideshowPage: New approved photo detected, adding to slideshow");
+            loadPhotos();
+            toast({
+              title: "New Photo",
+              description: "A new photo has been added to the slideshow",
             });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'photos',
+          filter: `album_id=eq.${albumId}`,
+        },
+        (payload) => {
+          console.log("SlideshowPage: Photo updated:", payload);
+          // If photo was just approved, refresh the slideshow
+          if (payload.new && payload.old && !payload.old.approved && payload.new.approved) {
+            console.log("SlideshowPage: Photo was just approved, refreshing slideshow");
+            loadPhotos();
+            toast({
+              title: "New Photo",
+              description: "A new photo has been approved and added to the slideshow",
+            });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'photos',
+          filter: `album_id=eq.${albumId}`,
+        },
+        (payload) => {
+          console.log("SlideshowPage: Photo deleted:", payload);
+          loadPhotos();
         }
       )
       .subscribe((status) => {
-        console.log(`SlideshowPage: Subscription status: ${status}`);
+        console.log(`SlideshowPage: Supabase subscription status: ${status}`);
       });
       
     return () => {
       console.log("SlideshowPage: Cleaning up real-time subscription");
       supabase.removeChannel(channel);
     };
-  }, [albumId]);
+  }, [albumId, toast, loadPhotos]);
   
   const handleGoBack = () => {
     navigate(`/album/${albumId}`);

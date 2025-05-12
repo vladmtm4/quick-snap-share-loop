@@ -5,7 +5,7 @@ import { ArrowLeft, Play, Pause } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Photo } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface SlideshowProps {
   photos: Photo[];
@@ -32,7 +32,12 @@ const Slideshow: React.FC<SlideshowProps> = ({
   // Update photos state when props change
   useEffect(() => {
     console.log(`Slideshow: Received ${initialPhotos.length} photos from props`);
-    setPhotos(initialPhotos);
+    
+    // Only update photos if there's a change in the array
+    if (JSON.stringify(initialPhotos) !== JSON.stringify(photos)) {
+      console.log("Slideshow: Photos array actually changed, updating state");
+      setPhotos(initialPhotos);
+    }
   }, [initialPhotos, updateSignal]);
   
   // Effect to handle changes in the photos array
@@ -61,115 +66,6 @@ const Slideshow: React.FC<SlideshowProps> = ({
       prevPhotoCount.current = photos.length;
     }
   }, [photos, currentIndex, toast]);
-  
-  // Set up real-time listener for new photos
-  useEffect(() => {
-    console.log("Slideshow: Setting up real-time subscription for album:", albumId);
-    
-    const channel = supabase
-      .channel('slideshow-photos-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'photos',
-          filter: `album_id=eq.${albumId}`,
-        },
-        (payload) => {
-          console.log("Slideshow: New photo inserted:", payload);
-          if (payload.new && payload.new.approved === true) {
-            const newPhoto: Photo = {
-              id: payload.new.id,
-              albumId: payload.new.album_id,
-              url: payload.new.url,
-              thumbnailUrl: payload.new.thumbnail_url,
-              createdAt: payload.new.created_at,
-              approved: payload.new.approved,
-              metadata: payload.new.metadata,
-            };
-            setPhotos(prevPhotos => [...prevPhotos, newPhoto]);
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'photos',
-          filter: `album_id=eq.${albumId}`,
-        },
-        (payload) => {
-          console.log("Slideshow: Photo updated:", payload);
-          // If photo was just approved, add it to the slideshow
-          if (payload.new && payload.old && !payload.old.approved && payload.new.approved) {
-            const newPhoto: Photo = {
-              id: payload.new.id,
-              albumId: payload.new.album_id,
-              url: payload.new.url,
-              thumbnailUrl: payload.new.thumbnail_url,
-              createdAt: payload.new.created_at,
-              approved: payload.new.approved,
-              metadata: payload.new.metadata,
-            };
-            setPhotos(prevPhotos => [...prevPhotos, newPhoto]);
-            
-            // Notify user
-            toast({
-              title: "Photo Approved",
-              description: "A new photo has been approved and added to the slideshow",
-            });
-          }
-          // If photo was unapproved, remove it from the slideshow
-          else if (payload.new && payload.old && payload.old.approved && !payload.new.approved) {
-            setPhotos(prevPhotos => {
-              const filtered = prevPhotos.filter(photo => photo.id !== payload.new.id);
-              // If we're viewing the photo that was just removed, go to the previous one
-              if (currentIndex >= filtered.length && filtered.length > 0) {
-                setCurrentIndex(Math.max(filtered.length - 1, 0));
-              }
-              return filtered;
-            });
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'photos',
-          filter: `album_id=eq.${albumId}`,
-        },
-        (payload) => {
-          console.log("Slideshow: Photo deleted:", payload);
-          if (payload.old) {
-            setPhotos(prevPhotos => {
-              const filtered = prevPhotos.filter(photo => photo.id !== payload.old.id);
-              // If we're viewing the photo that was just deleted, go to the previous one
-              if (currentIndex >= filtered.length && filtered.length > 0) {
-                setCurrentIndex(Math.max(filtered.length - 1, 0));
-              }
-              return filtered;
-            });
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log(`Slideshow: Subscription status: ${status}`);
-        if (status === 'SUBSCRIBED') {
-          console.log('Slideshow: Successfully subscribed to real-time updates');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('Slideshow: Error subscribing to real-time updates');
-        }
-      });
-      
-    return () => {
-      console.log("Slideshow: Cleaning up real-time subscription");
-      supabase.removeChannel(channel);
-    };
-  }, [albumId, currentIndex, toast]);
   
   const goBack = () => {
     navigate(`/album/${albumId}`);
