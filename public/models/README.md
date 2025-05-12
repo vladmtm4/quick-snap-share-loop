@@ -15,3 +15,4 @@ Required models:
 - ssd_mobilenetv1_model-weights_manifest.json
 
 These files are now present in this directory for the face recognition feature to work properly.
+

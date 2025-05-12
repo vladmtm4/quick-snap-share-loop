@@ -81,7 +81,8 @@ const GuestSelfieShare = () => {
     const loadModels = async () => {
       try {
         setModelsLoading(true);
-        // Use absolute path to ensure models are found regardless of the current route
+        
+        // Use absolute path with public URL base to ensure models are found regardless of the current route
         const MODEL_URL = `${window.location.origin}/models`;
         
         console.log("Loading models from:", MODEL_URL);
@@ -90,6 +91,18 @@ const GuestSelfieShare = () => {
           title: "Loading face detection models",
           description: "Please wait while we prepare face recognition...",
         });
+        
+        // Preload model files to check if they exist
+        try {
+          const manifestResponse = await fetch(`${MODEL_URL}/ssd_mobilenetv1_model-weights_manifest.json`);
+          if (!manifestResponse.ok) {
+            throw new Error(`Could not load model manifest file (status: ${manifestResponse.status})`);
+          }
+          console.log("SSD MobileNet manifest file is accessible");
+        } catch (error) {
+          console.error("Model manifest check failed:", error);
+          throw new Error("Face detection models are not accessible. Please ensure they are correctly placed in the public/models folder.");
+        }
         
         // Load models one by one with proper error handling and progress updates
         try {
@@ -100,7 +113,7 @@ const GuestSelfieShare = () => {
           setModelLoadingProgress(40);
         } catch (error) {
           console.error("Failed to load SSD MobileNet model:", error);
-          throw new Error("Failed to load face detection model. Please check your internet connection and try again.");
+          throw new Error("Failed to load face detection model. Please check if the models are correctly placed in the public/models directory.");
         }
         
         try {
@@ -111,7 +124,7 @@ const GuestSelfieShare = () => {
           setModelLoadingProgress(80);
         } catch (error) {
           console.error("Failed to load Face Landmark model:", error);
-          throw new Error("Failed to load face landmarks model. Please check your internet connection and try again.");
+          throw new Error("Failed to load face landmarks model. Please check if the models are correctly placed in the public/models directory.");
         }
         
         try {
@@ -121,7 +134,7 @@ const GuestSelfieShare = () => {
           setModelLoadingProgress(100);
         } catch (error) {
           console.error("Failed to load Face Recognition model:", error);
-          throw new Error("Failed to load face recognition model. Please check your internet connection and try again.");
+          throw new Error("Failed to load face recognition model. Please check if the models are correctly placed in the public/models directory.");
         }
         
         setModelsLoaded(true);
@@ -284,7 +297,9 @@ const GuestSelfieShare = () => {
         // fetch all approved photos
         const allPhotos = await supabaseService.getApprovedPhotosByAlbumId(albumId);
         
-        // compute descriptor for selfie
+        // Use a more lenient threshold for better matching
+        const FACE_MATCH_THRESHOLD = 0.75;
+        
         try {
           const selfieImg = await createImageFromUrl(selfieDataUrl);
           const selfieDetections = await faceapi.detectSingleFace(selfieImg)
@@ -309,41 +324,45 @@ const GuestSelfieShare = () => {
               description: `Processing ${allPhotos.length} photos...`
             });
             
-            // Use a more lenient threshold (0.75 instead of 0.6)
-            const FACE_MATCH_THRESHOLD = 0.75;
-            
             // Process photos in batches to avoid UI freezing
-            for (const photo of allPhotos) {
-              try {
-                const imgEl = await createImageFromUrl(photo.url);
-                const detections = await faceapi.detectAllFaces(imgEl)
-                  .withFaceLandmarks()
-                  .withFaceDescriptors();
-                
-                processedCount++;
-                
-                if (detections.length > 0) {
-                  // Check all faces in the photo
-                  for (const detection of detections) {
-                    const dist = faceapi.euclideanDistance(selfieDescriptor, detection.descriptor);
-                    if (dist < FACE_MATCH_THRESHOLD) {
-                      matches.push(photo);
-                      break; // One match in the photo is enough
+            const batchSize = 3;
+            for (let i = 0; i < allPhotos.length; i += batchSize) {
+              const batch = allPhotos.slice(i, i + batchSize);
+              const batchPromises = batch.map(async (photo) => {
+                try {
+                  const imgEl = await createImageFromUrl(photo.url);
+                  const detections = await faceapi.detectAllFaces(imgEl)
+                    .withFaceLandmarks()
+                    .withFaceDescriptors();
+                  
+                  processedCount++;
+                  
+                  if (detections.length > 0) {
+                    // Check all faces in the photo
+                    for (const detection of detections) {
+                      const dist = faceapi.euclideanDistance(selfieDescriptor, detection.descriptor);
+                      if (dist < FACE_MATCH_THRESHOLD) {
+                        return photo;
+                      }
                     }
                   }
+                  return null;
+                } catch (error) {
+                  console.error(`Error processing photo ${photo.id}:`, error);
+                  return null;
                 }
-                
-                // Update progress every 5 photos
-                if (processedCount % 5 === 0 || processedCount === allPhotos.length) {
-                  toast({
-                    title: "Scanning photos",
-                    description: `Processed ${processedCount} of ${allPhotos.length} photos...`
-                  });
-                }
-              } catch (error) {
-                console.error(`Error processing photo ${photo.id}:`, error);
-                continue; // Skip this photo but continue with others
-              }
+              });
+              
+              // Wait for batch to complete
+              const batchResults = await Promise.all(batchPromises);
+              const validMatches = batchResults.filter(result => result !== null) as Photo[];
+              matches.push(...validMatches);
+              
+              // Update progress
+              toast({
+                title: "Scanning photos",
+                description: `Processed ${Math.min(processedCount, allPhotos.length)} of ${allPhotos.length} photos...`
+              });
             }
             
             setGuestPhotos(matches);
