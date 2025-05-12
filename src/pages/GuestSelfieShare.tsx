@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { supabaseService } from "@/lib/supabase-service";
 import { Camera, Download, ArrowLeft, RefreshCw, Share, User } from "lucide-react";
 import * as faceapi from 'face-api.js';
 import { Guest, Photo } from "@/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const GuestSelfieShare = () => {
   const { guestId, albumId } = useParams<{ guestId: string, albumId: string }>();
@@ -22,6 +24,8 @@ const GuestSelfieShare = () => {
   const [searchReady, setSearchReady] = useState(false);
   const [searching, setSearching] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelLoadingProgress, setModelLoadingProgress] = useState(0);
   const [modelsError, setModelsError] = useState<string | null>(null);
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -74,11 +78,10 @@ const GuestSelfieShare = () => {
   }, [albumId, guestId, toast]);
 
   useEffect(() => {
-    // Load face-api models - make sure version matches the imported library
+    // Load face-api models
     const loadModels = async () => {
       try {
-        // Use a version that matches our package
-        // This needs to match the version in package.json (0.20.0)
+        setModelsLoading(true);
         const MODEL_URL = '/models';
         
         toast({
@@ -86,29 +89,37 @@ const GuestSelfieShare = () => {
           description: "Please wait while we prepare face recognition...",
         });
         
-        // Load models one by one with proper error handling
+        // Load models one by one with proper error handling and progress updates
         try {
+          setModelLoadingProgress(10);
+          console.log("Loading SSD MobileNet model...");
           await faceapi.nets.ssdMobilenetv1.load(MODEL_URL);
-          console.log("SSD MobileNet model loaded");
+          console.log("SSD MobileNet model loaded successfully");
+          setModelLoadingProgress(40);
         } catch (error) {
           console.error("Failed to load SSD MobileNet model:", error);
-          throw new Error("Failed to load face detection model");
+          throw new Error("Failed to load face detection model. Please check your internet connection and try again.");
         }
         
         try {
+          setModelLoadingProgress(60);
+          console.log("Loading Face Landmark model...");
           await faceapi.nets.faceLandmark68Net.load(MODEL_URL);
-          console.log("Face Landmark model loaded");
+          console.log("Face Landmark model loaded successfully");
+          setModelLoadingProgress(80);
         } catch (error) {
           console.error("Failed to load Face Landmark model:", error);
-          throw new Error("Failed to load face landmarks model");
+          throw new Error("Failed to load face landmarks model. Please check your internet connection and try again.");
         }
         
         try {
+          console.log("Loading Face Recognition model...");
           await faceapi.nets.faceRecognitionNet.load(MODEL_URL);
-          console.log("Face Recognition model loaded");
+          console.log("Face Recognition model loaded successfully");
+          setModelLoadingProgress(100);
         } catch (error) {
           console.error("Failed to load Face Recognition model:", error);
-          throw new Error("Failed to load face recognition model");
+          throw new Error("Failed to load face recognition model. Please check your internet connection and try again.");
         }
         
         setModelsLoaded(true);
@@ -124,14 +135,19 @@ const GuestSelfieShare = () => {
           description: "Could not load face recognition models. Basic photo matching will be used instead.",
           variant: "destructive"
         });
+      } finally {
+        setModelsLoading(false);
       }
     };
     
     loadModels();
     
-    // Ensure we clean up any models if component unmounts
+    // Clean up function
     return () => {
-      // No specific cleanup needed for models
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
     };
   }, [toast]);
 
@@ -223,7 +239,7 @@ const GuestSelfieShare = () => {
   const createImageFromUrl = async (url: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.crossOrigin = 'anonymous'; // Handle potential CORS issues
+      img.crossOrigin = 'anonymous'; // Handle CORS issues
       img.onload = () => resolve(img);
       img.onerror = (error) => reject(error);
       img.src = url;
@@ -291,7 +307,7 @@ const GuestSelfieShare = () => {
               description: `Processing ${allPhotos.length} photos...`
             });
             
-            // Use a more lenient threshold (0.8 instead of 0.6)
+            // Use a more lenient threshold (0.75 instead of 0.6)
             const FACE_MATCH_THRESHOLD = 0.75;
             
             // Process photos in batches to avoid UI freezing
@@ -316,7 +332,7 @@ const GuestSelfieShare = () => {
                 }
                 
                 // Update progress every 5 photos
-                if (processedCount % 5 === 0) {
+                if (processedCount % 5 === 0 || processedCount === allPhotos.length) {
                   toast({
                     title: "Scanning photos",
                     description: `Processed ${processedCount} of ${allPhotos.length} photos...`
@@ -395,10 +411,10 @@ const GuestSelfieShare = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-4 flex items-center justify-center min-h-screen">
+      <div className="container mx-auto p-4 flex items-center justify-center min-h-screen dark:bg-gray-900">
         <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-lg text-gray-600">Loading...</p>
+          <RefreshCw className="h-8 w-8 animate-spin text-primary mx-auto mb-4 dark:text-blue-400" />
+          <p className="text-lg text-gray-600 dark:text-gray-300">Loading...</p>
         </div>
       </div>
     );
@@ -406,17 +422,17 @@ const GuestSelfieShare = () => {
 
   if (!guest) {
     return (
-      <div className="container mx-auto p-4 flex flex-col items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
+      <div className="container mx-auto p-4 flex flex-col items-center justify-center min-h-screen dark:bg-gray-900">
+        <Card className="w-full max-w-md dark:bg-gray-800 dark:border-gray-700">
           <CardContent className="p-6">
             <div className="text-center mb-6">
-              <User className="h-12 w-12 mx-auto text-gray-400 mb-2" />
-              <h2 className="text-xl font-bold">Guest Not Found</h2>
-              <p className="text-gray-500">We couldn't find the guest information you're looking for.</p>
+              <User className="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500 mb-2" />
+              <h2 className="text-xl font-bold dark:text-white">Guest Not Found</h2>
+              <p className="text-gray-500 dark:text-gray-400">We couldn't find the guest information you're looking for.</p>
             </div>
             
             <Button
-              className="w-full"
+              className="w-full dark:bg-blue-600 dark:hover:bg-blue-700"
               onClick={handleBackToAlbum}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -430,18 +446,18 @@ const GuestSelfieShare = () => {
 
   if (isCapturing) {
     return (
-      <div className="container mx-auto p-4 flex flex-col items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md overflow-hidden">
+      <div className="container mx-auto p-4 flex flex-col items-center justify-center min-h-screen dark:bg-gray-900">
+        <Card className="w-full max-w-md overflow-hidden dark:bg-gray-800 dark:border-gray-700">
           <CardContent className="p-6">
-            <h2 className="text-xl font-bold text-center mb-4">
+            <h2 className="text-xl font-bold text-center mb-4 dark:text-white">
               Take a Selfie
             </h2>
             
-            <p className="text-gray-500 text-center mb-6">
+            <p className="text-gray-500 dark:text-gray-400 text-center mb-6">
               We'll use this to find photos you appear in
             </p>
             
-            <div className="relative rounded-lg overflow-hidden bg-gray-100 mb-6">
+            <div className="relative rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 mb-6">
               {isTakingSelfie ? (
                 <video 
                   ref={videoRef} 
@@ -456,26 +472,39 @@ const GuestSelfieShare = () => {
                   className="w-full h-auto"
                 />
               ) : (
-                <div className="flex items-center justify-center h-64 bg-gray-100">
-                  <Camera className="h-12 w-12 text-gray-400" />
+                <div className="flex items-center justify-center h-64 bg-gray-100 dark:bg-gray-700">
+                  <Camera className="h-12 w-12 text-gray-400 dark:text-gray-500" />
                 </div>
               )}
               <canvas ref={canvasRef} className="hidden" />
             </div>
             
+            {modelsLoading && (
+              <div className="mb-4">
+                <p className="text-sm font-medium text-blue-700 dark:text-blue-400 mb-1">Loading face detection models: {modelLoadingProgress}%</p>
+                <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-blue-500 transition-all duration-300" 
+                    style={{ width: `${modelLoadingProgress}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+            
             {modelsError && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4 text-sm">
-                <p className="font-medium text-yellow-800">Face detection limited</p>
-                <p className="text-yellow-700">{modelsError}</p>
-                <p className="text-yellow-700 mt-1">We'll use basic photo matching instead.</p>
+              <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded p-3 mb-4 text-sm">
+                <p className="font-medium text-yellow-800 dark:text-yellow-400">Face detection limited</p>
+                <p className="text-yellow-700 dark:text-yellow-500">{modelsError}</p>
+                <p className="text-yellow-700 dark:text-yellow-500 mt-1">We'll use basic photo matching instead.</p>
               </div>
             )}
             
             <div className="flex gap-3">
               {!isTakingSelfie && !selfieDataUrl && (
                 <Button 
-                  className="flex-1" 
+                  className="flex-1 dark:bg-blue-600 dark:hover:bg-blue-700" 
                   onClick={startCamera}
+                  disabled={modelsLoading}
                 >
                   <Camera className="mr-2 h-4 w-4" />
                   Access Camera
@@ -484,7 +513,7 @@ const GuestSelfieShare = () => {
               
               {isTakingSelfie && (
                 <Button 
-                  className="flex-1 bg-blue-500 hover:bg-blue-600" 
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700" 
                   onClick={takeSelfie}
                 >
                   <Camera className="mr-2 h-4 w-4" />
@@ -496,7 +525,7 @@ const GuestSelfieShare = () => {
                 <>
                   <Button 
                     variant="outline" 
-                    className="flex-1"
+                    className="flex-1 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                     onClick={retakeSelfie}
                   >
                     <RefreshCw className="mr-2 h-4 w-4" />
@@ -504,9 +533,9 @@ const GuestSelfieShare = () => {
                   </Button>
                   
                   <Button 
-                    className="flex-1 bg-green-500 hover:bg-green-600"
+                    className="flex-1 bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700"
                     onClick={findMatchingPhotos}
-                    disabled={!searchReady || searching}
+                    disabled={!searchReady || searching || modelsLoading}
                   >
                     {searching ? (
                       <>
@@ -526,7 +555,7 @@ const GuestSelfieShare = () => {
             
             <Button
               variant="ghost"
-              className="mt-4 w-full text-gray-500"
+              className="mt-4 w-full text-gray-500 dark:text-gray-400 dark:hover:bg-gray-800"
               onClick={() => setIsCapturing(false)}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -539,12 +568,12 @@ const GuestSelfieShare = () => {
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl">
+    <div className="container mx-auto p-4 max-w-4xl dark:bg-gray-900">
       <div className="mb-6">
         <Button
           variant="outline"
           onClick={handleBackToAlbum}
-          className="mb-4"
+          className="mb-4 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Album
@@ -552,10 +581,10 @@ const GuestSelfieShare = () => {
         
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">
+            <h1 className="text-2xl font-bold dark:text-white">
               Hi, {guest.guestName}!
             </h1>
-            <p className="text-gray-500">
+            <p className="text-gray-500 dark:text-gray-400">
               Here are photos you appear in
             </p>
           </div>
@@ -563,6 +592,7 @@ const GuestSelfieShare = () => {
           {!guest.photoUrl && (
             <Button
               onClick={() => setIsCapturing(true)}
+              className="dark:bg-blue-600 dark:hover:bg-blue-700"
             >
               <Camera className="mr-2 h-4 w-4" />
               Take Selfie to Find Photos
@@ -572,12 +602,12 @@ const GuestSelfieShare = () => {
       </div>
       
       {guest.photoUrl && guestPhotos.length === 0 && (
-        <Card className="mb-6">
+        <Card className="mb-6 dark:bg-gray-800 dark:border-gray-700">
           <CardContent className="p-6 text-center">
-            <p className="mb-4 text-gray-600">
+            <p className="mb-4 text-gray-600 dark:text-gray-300">
               We haven't found any photos with you in them yet.
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Check back later as more photos are added!
             </p>
           </CardContent>
@@ -587,7 +617,7 @@ const GuestSelfieShare = () => {
       {guestPhotos.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {guestPhotos.map(photo => (
-            <Card key={photo.id} className="overflow-hidden">
+            <Card key={photo.id} className="overflow-hidden dark:bg-gray-800 dark:border-gray-700">
               <div className="aspect-square relative overflow-hidden">
                 <img 
                   src={photo.url} 
@@ -598,7 +628,7 @@ const GuestSelfieShare = () => {
                   <Button
                     size="icon"
                     variant="outline"
-                    className="bg-white/80 hover:bg-white rounded-full"
+                    className="bg-white/80 hover:bg-white rounded-full dark:bg-black/50 dark:hover:bg-black/70"
                     onClick={() => downloadPhoto(photo)}
                   >
                     <Download className="h-4 w-4" />
@@ -614,7 +644,7 @@ const GuestSelfieShare = () => {
         <div className="mt-8 text-center">
           <Button
             onClick={() => setIsCapturing(true)}
-            className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
+            className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 dark:from-blue-600 dark:to-indigo-600 dark:hover:from-blue-700 dark:hover:to-indigo-700"
           >
             <Camera className="mr-2 h-5 w-5" />
             Take a Selfie to Find Your Photos

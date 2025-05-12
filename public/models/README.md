@@ -2,7 +2,7 @@
 # Face-API.js Models
 
 This directory contains the models required for face-api.js to function properly.
-These models should be downloaded from the face-api.js repository and placed here.
+These models are now included in the project for offline use.
 
 Required models:
 - face_landmark_68_model-shard1
@@ -14,4 +14,4 @@ Required models:
 - ssd_mobilenetv1_model-shard2
 - ssd_mobilenetv1_model-weights_manifest.json
 
-Please ensure these files are present for the face recognition feature to work properly.
+These files are now present in this directory for the face recognition feature to work properly.

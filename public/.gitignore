@@ -1,3 +1,6 @@
 
 # Don't ignore the models folder
 !models/
+
+# Don't ignore model files
+!models/*
