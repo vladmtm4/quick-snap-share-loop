@@ -50,102 +50,56 @@ const SlideshowPage: React.FC = () => {
   // Set up real-time listener for updates
   useEffect(() => {
     if (!albumId) return;
-    
-    console.log("SlideshowPage: Setting up real-time subscription for album:", albumId);
-    
-    // Create a dedicated channel for this slideshow page
-    const channel = supabase
-      .channel(`slideshow-updates-${albumId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'photos',
-          filter: `album_id=eq.${albumId}`,
-        },
-        (payload) => {
-          console.log("SlideshowPage: New photo inserted:", payload);
-          if (payload.new && payload.new.approved === true) {
-            console.log("SlideshowPage: New approved photo detected, inserting randomly into slideshow");
-            const newPhoto: Photo = {
-              id: payload.new.id,
-              albumId: payload.new.album_id,
-              url: payload.new.url,
-              thumbnailUrl: payload.new.thumbnail_url,
-              createdAt: payload.new.created_at,
-              approved: payload.new.approved,
-              metadata: payload.new.metadata,
-            };
-            setPhotos(prev => {
-              const updated = [...prev];
-              const idx = Math.floor(Math.random() * (updated.length + 1));
-              updated.splice(idx, 0, newPhoto);
-              return updated;
-            });
-            toast({
-              title: "New Photo",
-              description: "A new photo has been added to the slideshow",
-            });
-          }
+    console.log("SlideshowPage: Setting up real-time channel for album:", albumId);
+    const channel = supabase.channel(`slideshow-${albumId}`)
+      .on('postgres_changes', { schema: 'public', table: 'photos', event: 'INSERT', filter: `album_id=eq.${albumId}` }, ({ new: newRec }) => {
+        console.log("SlideshowPage: New photo inserted", newRec);
+        if (newRec.approved) {
+          const photo: Photo = {
+            id: newRec.id,
+            albumId: newRec.album_id,
+            url: newRec.url,
+            thumbnailUrl: newRec.thumbnail_url,
+            createdAt: newRec.created_at,
+            approved: newRec.approved,
+            metadata: newRec.metadata,
+          };
+          setPhotos(prev => {
+            const arr = [...prev];
+            arr.splice(Math.floor(Math.random() * (arr.length + 1)), 0, photo);
+            return arr;
+          });
+          toast({ title: 'New Photo', description: 'Photo uploaded' });
         }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'photos',
-          filter: `album_id=eq.${albumId}`,
-        },
-        (payload) => {
-          console.log("SlideshowPage: Photo updated:", payload);
-          if (payload.new && payload.old && !payload.old.approved && payload.new.approved) {
-            console.log("SlideshowPage: Photo was just approved, inserting randomly");
-            const newPhoto: Photo = {
-              id: payload.new.id,
-              albumId: payload.new.album_id,
-              url: payload.new.url,
-              thumbnailUrl: payload.new.thumbnail_url,
-              createdAt: payload.new.created_at,
-              approved: payload.new.approved,
-              metadata: payload.new.metadata,
-            };
-            setPhotos(prev => {
-              const updated = [...prev];
-              const idx = Math.floor(Math.random() * (updated.length + 1));
-              updated.splice(idx, 0, newPhoto);
-              return updated;
-            });
-            toast({
-              title: "New Photo",
-              description: "A new photo has been approved and added to the slideshow",
-            });
-          }
+      })
+      .on('postgres_changes', { schema: 'public', table: 'photos', event: 'UPDATE', filter: `album_id=eq.${albumId}` }, ({ old: oldRec, new: newRec }) => {
+        if (oldRec && !oldRec.approved && newRec.approved) {
+          const photo: Photo = {
+            id: newRec.id,
+            albumId: newRec.album_id,
+            url: newRec.url,
+            thumbnailUrl: newRec.thumbnail_url,
+            createdAt: newRec.created_at,
+            approved: newRec.approved,
+            metadata: newRec.metadata,
+          };
+          setPhotos(prev => {
+            const arr = [...prev];
+            arr.splice(Math.floor(Math.random() * (arr.length + 1)), 0, photo);
+            return arr;
+          });
+          toast({ title: 'Photo Approved', description: 'Photo approved and added' });
         }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'photos',
-          filter: `album_id=eq.${albumId}`,
-        },
-        (payload) => {
-          console.log("SlideshowPage: Photo deleted:", payload);
-          setPhotos(prev => prev.filter(photo => photo.id !== payload.old?.id));
-        }
-      )
-      .subscribe((status) => {
-        console.log(`SlideshowPage: Supabase subscription status: ${status}`);
-      });
-      
+      })
+      .on('postgres_changes', { schema: 'public', table: 'photos', event: 'DELETE', filter: `album_id=eq.${albumId}` }, ({ old }) => {
+        setPhotos(prev => prev.filter(p => p.id !== old?.id));
+      })
+      .subscribe();
     return () => {
-      console.log("SlideshowPage: Cleaning up real-time subscription");
+      console.log("SlideshowPage: Removing real-time channel");
       supabase.removeChannel(channel);
     };
-  }, [albumId, toast, loadPhotos]);
+  }, [albumId, toast]);
   
   const handleGoBack = () => {
     navigate(`/album/${albumId}`);
