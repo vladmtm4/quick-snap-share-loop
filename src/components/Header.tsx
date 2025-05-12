@@ -1,9 +1,9 @@
-
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 import LanguageSelector from "@/components/LanguageSelector";
+import ThemeToggle from '@/components/ThemeToggle';
 import { useLanguage } from "@/lib/i18n";
 import { ArrowLeft, LogIn, LogOut } from "lucide-react";
 
@@ -37,6 +37,7 @@ const Header: React.FC<HeaderProps> = ({ showBackButton = false, hideAuthButtons
         
         <div className="flex items-center gap-4">
           <LanguageSelector />
+          <ThemeToggle />
           
           {!hideAuthButtons && (
             user ? (

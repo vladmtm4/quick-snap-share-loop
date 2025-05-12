@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { fileToDataUrl, createThumbnail } from "@/lib/file-service";
 import { guestService } from "@/lib/guest-service";
 import { supabaseService } from "@/lib/supabase-service";
 import { Camera, Download, ArrowLeft, RefreshCw, Share, User } from "lucide-react";
+import * as faceapi from 'face-api.js';
 import { Guest, Photo } from "@/types";
 
 const GuestSelfieShare = () => {
@@ -21,6 +21,7 @@ const GuestSelfieShare = () => {
   const [selfieDataUrl, setSelfieDataUrl] = useState<string | null>(null);
   const [searchReady, setSearchReady] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -70,6 +71,19 @@ const GuestSelfieShare = () => {
 
     fetchGuestData();
   }, [albumId, guestId, toast]);
+
+  useEffect(() => {
+    // Load face-api models from CDN
+    (async () => {
+      const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
+      await Promise.all([
+        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+      ]);
+      setModelsLoaded(true);
+    })();
+  }, []);
 
   const loadGuestPhotos = async (currentGuest: Guest) => {
     try {
@@ -182,20 +196,33 @@ const GuestSelfieShare = () => {
         }
       }
       
-      // For now, we'll just load any photos that have this guest tagged
-      // In a real app, you'd use facial recognition here
-      await loadGuestPhotos(guest);
-      
-      if (guestPhotos.length === 0) {
-        toast({
-          title: "No photos found",
-          description: "We couldn't find any photos with you in them yet.",
-        });
+      // If face-api models are loaded, perform face recognition
+      if (modelsLoaded) {
+        // fetch all approved photos
+        const allPhotos = await supabaseService.getApprovedPhotosByAlbumId(albumId);
+        // compute descriptor for selfie
+        const selfieImg = await faceapi.fetchImage(selfieDataUrl);
+        const selfieDetection = await faceapi.detectSingleFace(selfieImg).withFaceLandmarks().withFaceDescriptor();
+        if (!selfieDetection) {
+          toast({ title: "Error", description: "Could not detect a face in your selfie", variant: "destructive" });
+          setGuestPhotos([]);
+        } else {
+          const descriptor = selfieDetection.descriptor;
+          const matches: Photo[] = [];
+          for (const photo of allPhotos) {
+            const imgEl = await faceapi.fetchImage(photo.url);
+            const detection = await faceapi.detectSingleFace(imgEl).withFaceLandmarks().withFaceDescriptor();
+            if (detection) {
+              const dist = faceapi.euclideanDistance(descriptor, detection.descriptor);
+              if (dist < 0.6) matches.push(photo);
+            }
+          }
+          setGuestPhotos(matches);
+          toast({ title: matches.length ? "Photos found!" : "No photos found", description: matches.length ? `We found ${matches.length} photos with you in them.` : "We couldn't find any photos with you in them yet." });
+        }
       } else {
-        toast({
-          title: "Photos found!",
-          description: `We found ${guestPhotos.length} photos with you in them.`,
-        });
+        // Fallback: filter by assignment metadata
+        await loadGuestPhotos(guest);
       }
     } catch (error) {
       console.error("Error searching for photos:", error);

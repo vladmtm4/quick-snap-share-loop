@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -17,8 +18,10 @@ interface PhotoUploaderProps {
 
 const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }) => {
   const [isUploading, setIsUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [uploadProgress, setUploadProgress] = useState({ uploaded: 0, total: 0 });
+  const [dragActive, setDragActive] = useState(false);
   const [showOptionsDialog, setShowOptionsDialog] = useState(false);
   const [captureMode, setCaptureMode] = useState<"camera" | "gallery" | null>(null);
   const [challengeCompleted, setChallengeCompleted] = useState(false);
@@ -45,102 +48,72 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
     }
   }, [album.id, isGameMode, guestAssignment]);
   
-  const handleFileSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    
-    const file = files[0];
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: "Invalid file",
-        description: "Please select an image file",
-        variant: "destructive"
-      });
+  const handleFileSelection = async (e: React.ChangeEvent<HTMLInputElement> | DragEvent) => {
+    const fileList = 'dataTransfer' in e ? e.dataTransfer?.files : e.target.files;
+    if (!fileList || fileList.length === 0) return;
+    const filesArr = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+    if (filesArr.length === 0) {
+      toast({ title: "Invalid file", description: "Select image files only", variant: "destructive" });
+      setDragActive(false);
       return;
     }
-    
-    setSelectedFile(file);
-    try {
-      const dataUrl = await fileToDataUrl(file);
-      setPreviewUrl(dataUrl);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to preview image",
-        variant: "destructive"
-      });
-    }
-    
-    // Close the dialog if it was open
+    // set multiple selections and generate previews
+    setSelectedFiles(filesArr);
+    const urls = await Promise.all(filesArr.map(f => fileToDataUrl(f)));
+    setPreviewUrls(urls);
+     
+    setDragActive(false);
+    setUploadProgress({ uploaded: 0, total: filesArr.length });
     setShowOptionsDialog(false);
   };
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(true);
+  }, []);
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+  }, []);
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+    handleFileSelection(e.nativeEvent as unknown as DragEvent);
+  }, [handleFileSelection]);
   
   const handleUpload = async () => {
-    if (!selectedFile) return;
-    
+    if (selectedFiles.length === 0) return;
+     
     setIsUploading(true);
-    
+    setUploadProgress({ uploaded: 0, total: selectedFiles.length });
+     
     try {
-      // Upload to Supabase storage
-      const storageResult = await supabaseService.uploadImageToStorage(
-        album.id,
-        selectedFile
-      );
-      
-      if (!storageResult) {
-        throw new Error("Failed to upload to storage");
+      // sequentially upload each file
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const storage = await supabaseService.uploadImageToStorage(album.id, file);
+        if (!storage) throw new Error("Storage upload failed");
+        await supabaseService.addPhoto({ albumId: album.id, url: storage.url, thumbnailUrl: storage.thumbnailUrl, approved: !album.moderationEnabled, metadata: isGameMode ? { gameChallenge: true, assignment: guestAssignment } : undefined });
+        setUploadProgress(prev => ({ ...prev, uploaded: prev.uploaded + 1 }));
       }
-      
-      // Add photo record to database
-      const result = await supabaseService.addPhoto({
-        albumId: album.id,
-        url: storageResult.url,
-        thumbnailUrl: storageResult.thumbnailUrl,
-        approved: !album.moderationEnabled, // Auto-approve if moderation is disabled
-        metadata: isGameMode ? { gameChallenge: true, assignment: guestAssignment } : undefined
-      });
-      
-      if (!result.success) {
-        throw new Error(result.error);
-      }
-      
-      // Show success message
-      if (!isGameMode) {
-        toast({
-          title: "Success",
-          description: album.moderationEnabled
-            ? "Photo uploaded and will appear after review"
-            : "Photo uploaded successfully!"
-        });
-      }
-      
-      setPreviewUrl(null);
-      setSelectedFile(null);
-      
-      // If in game mode, set challenge completed flag
-      if (isGameMode && guestAssignment) {
-        setChallengeCompleted(true);
-        localStorage.setItem(`completed_challenge_${album.id}_${guestAssignment}`, "true");
-      }
-      
-      if (onUploadComplete) {
-        onUploadComplete();
-      }
+       
+      toast({ title: "Success", description: `Uploaded ${uploadProgress.total} photo(s)!` });
+      setSelectedFiles([]);
+      setPreviewUrls([]);
+      setUploadProgress({ uploaded: 0, total: 0 });
+       
     } catch (error) {
       console.error("Upload error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to upload photo",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "Failed to upload photo(s)", variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
   };
   
   const handleCancelUpload = () => {
-    setPreviewUrl(null);
-    setSelectedFile(null);
+    setSelectedFiles([]);
+    setPreviewUrls([]);
+    setUploadProgress({ uploaded: 0, total: 0 });
   };
   
   const handleAddPhotoClick = () => {
@@ -246,19 +219,17 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
           </div>
         )}
         
-        {!previewUrl ? (
-          <div className="flex flex-col items-center">
-            <div 
-              className="border-2 border-dashed border-gray-300 rounded-lg p-12 w-full flex flex-col items-center justify-center cursor-pointer hover:border-brand-blue transition-colors"
-              onClick={handleAddPhotoClick}
-            >
+        {previewUrls.length === 0 ? (
+          <div className="w-full">
+            <div className={`border-2 border-dashed rounded-lg p-12 w-full flex flex-col items-center justify-center transition-colors ${dragActive ? 'border-primary ring-2 ring-primary bg-primary/10' : 'border-gray-300 hover:border-primary'} cursor-pointer`} onClick={handleAddPhotoClick} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
               <Upload size={40} className="text-gray-400 mb-2" />
-              <p className="font-medium text-lg">Add a photo</p>
-              <p className="text-sm text-gray-500">Click to take a photo or select from gallery</p>
+              <p className="font-medium text-lg">Drag & drop or click to add multiple</p>
+              <p className="text-sm text-gray-500">Select one or more images</p>
             </div>
-            
+
             {/* Hidden file inputs */}
             <input
+              multiple
               type="file"
               accept="image/*"
               className="hidden"
@@ -268,6 +239,7 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
             />
             <input
               type="file"
+              multiple
               accept="image/*"
               capture="environment"
               className="hidden"
@@ -275,7 +247,7 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
               ref={cameraInputRef}
               onChange={handleFileSelection}
             />
-            
+
             {album.moderationEnabled && (
               <p className="text-sm text-muted-foreground mt-4 text-center">
                 Note: Photos will be reviewed before appearing in the album
@@ -284,14 +256,22 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="relative bg-black rounded-lg overflow-hidden aspect-square">
-              <img
-                src={previewUrl}
-                alt="Preview"
-                className="w-full h-full object-contain"
-              />
+            {/* previews grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {previewUrls.map((url, idx) => (
+                <div key={idx} className="relative">
+                  <img src={url} alt={`preview-${idx}`} className="w-full h-32 object-cover rounded" />
+                  <button type="button" onClick={() => { setSelectedFiles(prev => prev.filter((_, i) => i !== idx)); setPreviewUrls(prev => prev.filter((_, i) => i !== idx)); }} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"><span className="sr-only">Remove</span>&times;</button>
+                </div>
+              ))}
             </div>
-            
+            {/* progress bar */}
+            {isUploading && (
+              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div className="bg-primary h-2 rounded-full" style={{ width: `${(uploadProgress.uploaded/uploadProgress.total)*100}%` }} />
+              </div>
+            )}
+             
             <div className="flex gap-3">
               <Button
                 variant="outline"
@@ -306,7 +286,7 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({ album, onUploadComplete }
                 onClick={handleUpload}
                 disabled={isUploading}
               >
-                {isUploading ? "Uploading..." : "Upload"}
+                {isUploading ? `Uploading ${uploadProgress.uploaded}/${uploadProgress.total}` : 'Upload'}
               </Button>
             </div>
           </div>
