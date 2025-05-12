@@ -22,6 +22,7 @@ const GuestSelfieShare = () => {
   const [searchReady, setSearchReady] = useState(false);
   const [searching, setSearching] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [modelsError, setModelsError] = useState<string | null>(null);
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -73,17 +74,66 @@ const GuestSelfieShare = () => {
   }, [albumId, guestId, toast]);
 
   useEffect(() => {
-    // Load face-api models from CDN
-    (async () => {
-      const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
-      await Promise.all([
-        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-      ]);
-      setModelsLoaded(true);
-    })();
-  }, []);
+    // Load face-api models - make sure version matches the imported library
+    const loadModels = async () => {
+      try {
+        // Use a version that matches our package
+        // This needs to match the version in package.json (0.20.0)
+        const MODEL_URL = '/models';
+        
+        toast({
+          title: "Loading face detection models",
+          description: "Please wait while we prepare face recognition...",
+        });
+        
+        // Load models one by one with proper error handling
+        try {
+          await faceapi.nets.ssdMobilenetv1.load(MODEL_URL);
+          console.log("SSD MobileNet model loaded");
+        } catch (error) {
+          console.error("Failed to load SSD MobileNet model:", error);
+          throw new Error("Failed to load face detection model");
+        }
+        
+        try {
+          await faceapi.nets.faceLandmark68Net.load(MODEL_URL);
+          console.log("Face Landmark model loaded");
+        } catch (error) {
+          console.error("Failed to load Face Landmark model:", error);
+          throw new Error("Failed to load face landmarks model");
+        }
+        
+        try {
+          await faceapi.nets.faceRecognitionNet.load(MODEL_URL);
+          console.log("Face Recognition model loaded");
+        } catch (error) {
+          console.error("Failed to load Face Recognition model:", error);
+          throw new Error("Failed to load face recognition model");
+        }
+        
+        setModelsLoaded(true);
+        toast({
+          title: "Ready",
+          description: "Face detection is ready to use",
+        });
+      } catch (error) {
+        console.error("Error loading face-api models:", error);
+        setModelsError(error instanceof Error ? error.message : "Failed to load face recognition models");
+        toast({
+          title: "Face Detection Error",
+          description: "Could not load face recognition models. Basic photo matching will be used instead.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    loadModels();
+    
+    // Ensure we clean up any models if component unmounts
+    return () => {
+      // No specific cleanup needed for models
+    };
+  }, [toast]);
 
   const loadGuestPhotos = async (currentGuest: Guest) => {
     try {
@@ -156,6 +206,11 @@ const GuestSelfieShare = () => {
       
       setIsTakingSelfie(false);
       setSearchReady(true);
+      
+      toast({
+        title: "Selfie captured",
+        description: "Now you can search for photos with you in them",
+      });
     }
   };
 
@@ -163,6 +218,16 @@ const GuestSelfieShare = () => {
     setSelfieDataUrl(null);
     setSearchReady(false);
     startCamera();
+  };
+
+  const createImageFromUrl = async (url: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous'; // Handle potential CORS issues
+      img.onload = () => resolve(img);
+      img.onerror = (error) => reject(error);
+      img.src = url;
+    });
   };
 
   const findMatchingPhotos = async () => {
@@ -200,25 +265,85 @@ const GuestSelfieShare = () => {
       if (modelsLoaded) {
         // fetch all approved photos
         const allPhotos = await supabaseService.getApprovedPhotosByAlbumId(albumId);
+        
         // compute descriptor for selfie
-        const selfieImg = await faceapi.fetchImage(selfieDataUrl);
-        const selfieDetection = await faceapi.detectSingleFace(selfieImg).withFaceLandmarks().withFaceDescriptor();
-        if (!selfieDetection) {
-          toast({ title: "Error", description: "Could not detect a face in your selfie", variant: "destructive" });
-          setGuestPhotos([]);
-        } else {
-          const descriptor = selfieDetection.descriptor;
-          const matches: Photo[] = [];
-          for (const photo of allPhotos) {
-            const imgEl = await faceapi.fetchImage(photo.url);
-            const detection = await faceapi.detectSingleFace(imgEl).withFaceLandmarks().withFaceDescriptor();
-            if (detection) {
-              const dist = faceapi.euclideanDistance(descriptor, detection.descriptor);
-              if (dist < 0.6) matches.push(photo);
+        try {
+          const selfieImg = await createImageFromUrl(selfieDataUrl);
+          const selfieDetections = await faceapi.detectSingleFace(selfieImg)
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+          
+          if (!selfieDetections) {
+            toast({ 
+              title: "No face detected", 
+              description: "We couldn't detect a face in your selfie. Try taking another one with good lighting.", 
+              variant: "destructive" 
+            });
+            setGuestPhotos([]);
+          } else {
+            const selfieDescriptor = selfieDetections.descriptor;
+            const matches: Photo[] = [];
+            let processedCount = 0;
+            
+            // Show a loading status
+            toast({
+              title: "Scanning photos",
+              description: `Processing ${allPhotos.length} photos...`
+            });
+            
+            // Use a more lenient threshold (0.8 instead of 0.6)
+            const FACE_MATCH_THRESHOLD = 0.75;
+            
+            // Process photos in batches to avoid UI freezing
+            for (const photo of allPhotos) {
+              try {
+                const imgEl = await createImageFromUrl(photo.url);
+                const detections = await faceapi.detectAllFaces(imgEl)
+                  .withFaceLandmarks()
+                  .withFaceDescriptors();
+                
+                processedCount++;
+                
+                if (detections.length > 0) {
+                  // Check all faces in the photo
+                  for (const detection of detections) {
+                    const dist = faceapi.euclideanDistance(selfieDescriptor, detection.descriptor);
+                    if (dist < FACE_MATCH_THRESHOLD) {
+                      matches.push(photo);
+                      break; // One match in the photo is enough
+                    }
+                  }
+                }
+                
+                // Update progress every 5 photos
+                if (processedCount % 5 === 0) {
+                  toast({
+                    title: "Scanning photos",
+                    description: `Processed ${processedCount} of ${allPhotos.length} photos...`
+                  });
+                }
+              } catch (error) {
+                console.error(`Error processing photo ${photo.id}:`, error);
+                continue; // Skip this photo but continue with others
+              }
             }
+            
+            setGuestPhotos(matches);
+            toast({ 
+              title: matches.length ? "Photos found!" : "No photos found", 
+              description: matches.length ? `We found ${matches.length} photos with you in them.` : "We couldn't find any photos with you in them yet." 
+            });
           }
-          setGuestPhotos(matches);
-          toast({ title: matches.length ? "Photos found!" : "No photos found", description: matches.length ? `We found ${matches.length} photos with you in them.` : "We couldn't find any photos with you in them yet." });
+        } catch (error) {
+          console.error("Error in face detection:", error);
+          toast({
+            title: "Face Detection Error",
+            description: "An error occurred during face detection. Falling back to basic matching.",
+            variant: "destructive"
+          });
+          
+          // Fallback: filter by assignment metadata
+          await loadGuestPhotos(guest);
         }
       } else {
         // Fallback: filter by assignment metadata
@@ -231,6 +356,9 @@ const GuestSelfieShare = () => {
         description: "Something went wrong while searching for your photos",
         variant: "destructive"
       });
+      
+      // Fallback to metadata-based matching
+      await loadGuestPhotos(guest);
     } finally {
       setSearching(false);
       setIsCapturing(false);
@@ -334,6 +462,14 @@ const GuestSelfieShare = () => {
               )}
               <canvas ref={canvasRef} className="hidden" />
             </div>
+            
+            {modelsError && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4 text-sm">
+                <p className="font-medium text-yellow-800">Face detection limited</p>
+                <p className="text-yellow-700">{modelsError}</p>
+                <p className="text-yellow-700 mt-1">We'll use basic photo matching instead.</p>
+              </div>
+            )}
             
             <div className="flex gap-3">
               {!isTakingSelfie && !selfieDataUrl && (

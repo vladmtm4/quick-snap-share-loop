@@ -1,11 +1,19 @@
+
 import React, { useEffect, useState } from 'react';
 import { Sun, Moon } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
 const ThemeToggle: React.FC = () => {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    const theme = localStorage.getItem('theme') || 'light';
+    // Check system preference first
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    // Then check saved preference
+    const savedTheme = localStorage.getItem('theme');
+    const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+    
     const dark = theme === 'dark';
     setIsDark(dark);
     document.documentElement.classList.toggle('dark', dark);
@@ -19,13 +27,19 @@ const ThemeToggle: React.FC = () => {
   };
 
   return (
-    <button
-      aria-label="Toggle theme"
+    <Button
+      variant="ghost"
+      size="icon"
       onClick={toggleTheme}
-      className="p-2 rounded hover:bg-accent hover:text-accent-foreground transition"
+      aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
+      className="rounded-full h-9 w-9 p-0"
+      title={isDark ? "Light mode" : "Dark mode"}
     >
-      {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-    </button>
+      {isDark ? 
+        <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all" /> : 
+        <Moon className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all" />
+      }
+    </Button>
   );
 };
 

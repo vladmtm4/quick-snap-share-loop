@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ const Header: React.FC<HeaderProps> = ({ showBackButton = false, hideAuthButtons
   };
   
   return (
-    <header className="bg-white shadow-sm">
+    <header className="bg-white dark:bg-gray-900 shadow-sm">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
         <div className="flex items-center">
           {showBackButton && (
@@ -30,7 +31,7 @@ const Header: React.FC<HeaderProps> = ({ showBackButton = false, hideAuthButtons
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
-          <Link to="/" className="text-xl font-semibold text-brand-blue">
+          <Link to="/" className="text-xl font-semibold text-brand-blue dark:text-blue-400">
             PhotoShare
           </Link>
         </div>
@@ -45,7 +46,7 @@ const Header: React.FC<HeaderProps> = ({ showBackButton = false, hideAuthButtons
                 variant="outline"
                 size="sm"
                 onClick={() => signOut()}
-                className="flex items-center gap-1"
+                className="flex items-center gap-1 dark:border-gray-700 dark:text-gray-200"
               >
                 <LogOut className="h-4 w-4" />
                 <span>{translate("signOut")}</span>
@@ -55,7 +56,7 @@ const Header: React.FC<HeaderProps> = ({ showBackButton = false, hideAuthButtons
                 variant="outline"
                 size="sm"
                 onClick={() => navigate("/auth")}
-                className="flex items-center gap-1"
+                className="flex items-center gap-1 dark:border-gray-700 dark:text-gray-200"
               >
                 <LogIn className="h-4 w-4" />
                 <span>{translate("signIn")}</span>
