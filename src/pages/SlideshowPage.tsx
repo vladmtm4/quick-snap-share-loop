@@ -15,6 +15,7 @@ const SlideshowPage: React.FC = () => {
   
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updateSignal, setUpdateSignal] = useState(0);
   
   // Function to load photos that can be called anytime we need fresh data
   const loadPhotos = useCallback(async () => {
@@ -30,6 +31,8 @@ const SlideshowPage: React.FC = () => {
       const approvedPhotos = await supabaseService.getApprovedPhotosByAlbumId(albumId);
       console.log("SlideshowPage: Approved photos loaded:", approvedPhotos.length);
       setPhotos(approvedPhotos);
+      // Force re-render of slideshow when we load new photos
+      setUpdateSignal(prev => prev + 1);
     } catch (error) {
       console.error("Error loading photos:", error);
       toast({
@@ -50,56 +53,76 @@ const SlideshowPage: React.FC = () => {
   // Set up real-time listener for updates
   useEffect(() => {
     if (!albumId) return;
-    console.log("SlideshowPage: Setting up real-time channel for album:", albumId);
-    const channel = supabase.channel(`slideshow-${albumId}`)
-      .on('postgres_changes', { schema: 'public', table: 'photos', event: 'INSERT', filter: `album_id=eq.${albumId}` }, ({ new: newRec }) => {
-        console.log("SlideshowPage: New photo inserted", newRec);
-        if (newRec.approved) {
-          const photo: Photo = {
-            id: newRec.id,
-            albumId: newRec.album_id,
-            url: newRec.url,
-            thumbnailUrl: newRec.thumbnail_url,
-            createdAt: newRec.created_at,
-            approved: newRec.approved,
-            metadata: newRec.metadata,
-          };
-          setPhotos(prev => {
-            const arr = [...prev];
-            arr.splice(Math.floor(Math.random() * (arr.length + 1)), 0, photo);
-            return arr;
-          });
-          toast({ title: 'New Photo', description: 'Photo uploaded' });
+    
+    console.log("SlideshowPage: Setting up real-time subscription for album:", albumId);
+    
+    // Create a dedicated channel for this slideshow page
+    const channel = supabase
+      .channel(`slideshow-updates-${albumId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'photos',
+          filter: `album_id=eq.${albumId}`,
+        },
+        (payload) => {
+          console.log("SlideshowPage: New photo inserted:", payload);
+          // If the new photo is already approved, add it to the slideshow immediately
+          if (payload.new && payload.new.approved === true) {
+            console.log("SlideshowPage: New approved photo detected, adding to slideshow");
+            loadPhotos();
+            toast({
+              title: "New Photo",
+              description: "A new photo has been added to the slideshow",
+            });
+          }
         }
-      })
-      .on('postgres_changes', { schema: 'public', table: 'photos', event: 'UPDATE', filter: `album_id=eq.${albumId}` }, ({ old: oldRec, new: newRec }) => {
-        if (oldRec && !oldRec.approved && newRec.approved) {
-          const photo: Photo = {
-            id: newRec.id,
-            albumId: newRec.album_id,
-            url: newRec.url,
-            thumbnailUrl: newRec.thumbnail_url,
-            createdAt: newRec.created_at,
-            approved: newRec.approved,
-            metadata: newRec.metadata,
-          };
-          setPhotos(prev => {
-            const arr = [...prev];
-            arr.splice(Math.floor(Math.random() * (arr.length + 1)), 0, photo);
-            return arr;
-          });
-          toast({ title: 'Photo Approved', description: 'Photo approved and added' });
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'photos',
+          filter: `album_id=eq.${albumId}`,
+        },
+        (payload) => {
+          console.log("SlideshowPage: Photo updated:", payload);
+          // If photo was just approved, refresh the slideshow
+          if (payload.new && payload.old && !payload.old.approved && payload.new.approved) {
+            console.log("SlideshowPage: Photo was just approved, refreshing slideshow");
+            loadPhotos();
+            toast({
+              title: "New Photo",
+              description: "A new photo has been approved and added to the slideshow",
+            });
+          }
         }
-      })
-      .on('postgres_changes', { schema: 'public', table: 'photos', event: 'DELETE', filter: `album_id=eq.${albumId}` }, ({ old }) => {
-        setPhotos(prev => prev.filter(p => p.id !== old?.id));
-      })
-      .subscribe();
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'photos',
+          filter: `album_id=eq.${albumId}`,
+        },
+        (payload) => {
+          console.log("SlideshowPage: Photo deleted:", payload);
+          loadPhotos();
+        }
+      )
+      .subscribe((status) => {
+        console.log(`SlideshowPage: Supabase subscription status: ${status}`);
+      });
+      
     return () => {
-      console.log("SlideshowPage: Removing real-time channel");
+      console.log("SlideshowPage: Cleaning up real-time subscription");
       supabase.removeChannel(channel);
     };
-  }, [albumId, toast]);
+  }, [albumId, toast, loadPhotos]);
   
   const handleGoBack = () => {
     navigate(`/album/${albumId}`);
@@ -122,7 +145,8 @@ const SlideshowPage: React.FC = () => {
       <Slideshow 
         photos={photos} 
         albumId={albumId || ""}
-        interval={5000}
+        updateSignal={updateSignal}
+        interval={5000} // Set interval to 5 seconds explicitly
       />
     </div>
   );
