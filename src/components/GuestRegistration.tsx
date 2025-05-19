@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { guestService } from "@/lib/guest-service";
-import { Upload } from "lucide-react";
+import { Upload, PartyPopper } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
 interface GuestRegistrationProps {
@@ -18,12 +18,21 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId, onRegist
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { toast } = useToast();
   const { translate, language } = useLanguage();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setPhotoFile(e.target.files[0]);
+      const file = e.target.files[0];
+      setPhotoFile(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -70,6 +79,7 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId, onRegist
       // Clear form
       setName("");
       setPhotoFile(null);
+      setPreviewUrl(null);
       
       // Call the completion callback if provided
       if (onRegistrationComplete) {
@@ -89,46 +99,78 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId, onRegist
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle>{translate("weddingGuestRegistration")}</CardTitle>
-        <CardDescription className="text-base mt-2">
+    <Card className="w-full max-w-md mx-auto border-2 border-primary shadow-lg backdrop-blur-sm bg-white/90">
+      <CardHeader className="bg-gradient-to-r from-blue-100 to-purple-100 rounded-t-lg pb-6">
+        <div className="flex justify-center mb-4">
+          <PartyPopper className="h-12 w-12 text-primary animate-bounce" />
+        </div>
+        <CardTitle className="text-2xl md:text-3xl text-center font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+          {translate("weddingGuestRegistration")}
+        </CardTitle>
+        <CardDescription className="text-base mt-4 text-gray-700">
           {translate("registrationWelcome")}
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4" dir={language === 'he' ? 'rtl' : 'ltr'}>
-          <div className="space-y-2">
-            <Label htmlFor="name">{translate("yourName")}</Label>
+      <CardContent className="pt-6">
+        <form onSubmit={handleSubmit} className="space-y-5" dir={language === 'he' ? 'rtl' : 'ltr'}>
+          <div className="space-y-3">
+            <Label htmlFor="name" className="text-lg font-medium">
+              {translate("yourName")}
+            </Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={translate("enterFullName")}
               required
+              className="border-2 border-gray-200 focus:border-primary transition-all duration-300"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="photo">{translate("yourPhoto")}</Label>
-            <Input
-              id="photo"
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="cursor-pointer"
-            />
-            <p className="text-sm text-muted-foreground mt-1">
+          <div className="space-y-3">
+            <Label htmlFor="photo" className="text-lg font-medium">
+              {translate("yourPhoto")}
+            </Label>
+            
+            <div className="border-2 border-dashed rounded-lg p-4 hover:border-primary cursor-pointer transition-all duration-200">
+              <Input
+                id="photo"
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="cursor-pointer opacity-0 absolute"
+                style={{ width: '100%', height: '100%', top: 0, left: 0 }}
+              />
+              <div className="text-center py-4">
+                <Upload className="mx-auto h-10 w-10 text-gray-400" />
+                <p className="mt-2 text-sm text-gray-500">
+                  {previewUrl ? 'Change photo' : 'Click to upload or drag and drop'}
+                </p>
+              </div>
+            </div>
+            
+            {previewUrl && (
+              <div className="mt-4 relative">
+                <div className="relative w-40 h-40 mx-auto overflow-hidden rounded-full border-4 border-primary shadow-lg">
+                  <img src={previewUrl} alt="Preview" className="object-cover w-full h-full" />
+                </div>
+              </div>
+            )}
+            
+            <p className="text-sm text-muted-foreground mt-2">
               {translate("photoHelp")}
             </p>
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full h-12 text-lg shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300" disabled={isLoading}>
             {isLoading ? (
-              <>{translate("processing")}</>
+              <div className="flex items-center">
+                <span className="animate-spin mr-2">✨</span>
+                {translate("processing")}
+              </div>
             ) : (
               <>
-                <Upload className="mr-2 h-4 w-4" />
+                <Upload className="mr-2 h-5 w-5" />
                 {translate("registerForEvent")}
               </>
             )}

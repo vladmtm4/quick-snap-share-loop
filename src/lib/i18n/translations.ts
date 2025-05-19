@@ -1,4 +1,3 @@
-
 import { SupportedLanguage, TranslationCache } from './types';
 
 // Core translations that we keep locally to avoid API calls for common text
@@ -25,76 +24,76 @@ export const coreTranslations: TranslationCache = {
   },
   // Registration page translations
   weddingGuestRegistration: {
-    en: 'Wedding Guest Registration',
-    he: 'רישום אורחי חתונה'
+    en: '✨ Wedding Photo Game Registration ✨',
+    he: '✨ הרשמה למשחק תמונות החתונה ✨'
   },
   registrationWelcome: {
-    en: "Welcome to our wedding celebration! We're planning a special photo-finding game during the reception where guests will try to locate each other in photos. To participate, please register your name and upload a photo of yourself that other guests can use to find you during the game.",
-    he: "ברוכים הבאים לחגיגת החתונה שלנו! אנו מתכננים משחק מיוחד של מציאת תמונות במהלך קבלת הפנים, שבו אורחים ינסו לאתר זה את זה בתמונות. כדי להשתתף, אנא הירשמו עם שמכם והעלו תמונה של עצמכם שאורחים אחרים יוכלו להשתמש בה כדי למצוא אתכם במהלך המשחק."
+    en: "Get ready for a fun photo adventure at our wedding! 📸 We're planning an exciting photo-finding game during the reception where you'll search for other guests in photos. Register your name and upload your best selfie to join the fun!",
+    he: "התכוננו להרפתקת תמונות מהנה בחתונה שלנו! 📸 אנחנו מתכננים משחק מלהיב של מציאת תמונות במהלך קבלת הפנים שבו תחפשו אחר אורחים אחרים בתמונות. הירשמו עם השם שלכם והעלו את הסלפי הטוב ביותר שלכם כדי להצטרף לכיף!"
   },
   yourName: {
-    en: 'Your Name',
-    he: 'השם שלך'
+    en: 'Your Name 👋',
+    he: 'השם שלך 👋'
   },
   enterFullName: {
-    en: 'Enter your full name',
-    he: 'הכנס את שמך המלא'
+    en: 'Enter your full name here',
+    he: 'הכנס את שמך המלא כאן'
   },
   yourPhoto: {
-    en: 'Your Photo',
-    he: 'התמונה שלך'
+    en: 'Your Photo 🤳',
+    he: 'התמונה שלך 🤳'
   },
   photoHelp: {
-    en: 'This photo will help other guests find you during the reception game',
-    he: 'תמונה זו תעזור לאורחים אחרים למצוא אותך במהלך משחק קבלת הפנים'
+    en: 'Upload a clear, fun photo so others can easily find you during the game!',
+    he: 'העלה תמונה ברורה ומהנה כדי שאחרים יוכלו למצוא אותך בקלות במהלך המשחק!'
   },
   registerForEvent: {
-    en: 'Register for the Event',
-    he: 'הירשם לאירוע'
+    en: 'Join The Fun! 🎮',
+    he: 'הצטרף לכיף! 🎮'
   },
   processing: {
-    en: 'Processing...',
-    he: 'מעבד...'
+    en: 'Magic Happening... ✨',
+    he: 'קסם קורה... ✨'
   },
   registrationComplete: {
-    en: 'Registration Complete!',
-    he: 'הרישום הושלם!'
+    en: 'Woohoo! You\'re In! 🎉',
+    he: 'יש! נרשמת! 🎉'
   },
   thankYouRegistration: {
-    en: 'Thank you for registering for the photo-finding game at',
-    he: 'תודה שנרשמת למשחק מציאת התמונות ב'
+    en: 'Thanks for joining our photo-finding adventure at',
+    he: 'תודה שהצטרפת להרפתקת מציאת התמונות ב'
   },
   lookForwardSeeing: {
-    en: 'We look forward to seeing you at the reception.',
-    he: 'אנו מצפים לראותך בקבלת הפנים.'
+    en: 'We can\'t wait to see you at the reception!',
+    he: 'אנחנו לא יכולים לחכות לראות אותך בקבלת הפנים!'
   },
   dontForgetPhone: {
-    en: "Don't forget to bring your phone to participate in the game during the reception!",
-    he: 'אל תשכח להביא את הטלפון שלך כדי להשתתף במשחק במהלך קבלת הפנים!'
+    en: "Don't forget your phone to play the photo game - it's going to be awesome! 📱✨",
+    he: 'אל תשכח להביא את הטלפון שלך כדי לשחק במשחק התמונות - זה הולך להיות מדהים! 📱✨'
   },
   nameRequired: {
-    en: 'Name required',
+    en: 'Name Needed',
     he: 'שם נדרש'
   },
   pleaseEnterName: {
-    en: 'Please enter your name to continue',
-    he: 'אנא הכנס את שמך כדי להמשיך'
+    en: 'Please enter your name to join the fun',
+    he: 'אנא הכנס את שמך כדי להצטרף לחגיגה'
   },
   registrationSuccessful: {
-    en: 'Registration successful',
-    he: 'הרישום בוצע בהצלחה'
+    en: 'Registration successful! 🎊',
+    he: 'הרישום בוצע בהצלחה! 🎊'
   },
   addedToGuestList: {
-    en: "You've been added to the guest list",
-    he: 'נוספת לרשימת האורחים'
+    en: "You've been added to the guest list! Get ready for the fun!",
+    he: 'נוספת לרשימת האורחים! התכונן לכיף!'
   },
   registrationFailed: {
-    en: 'Registration failed',
-    he: 'הרישום נכשל'
+    en: 'Oops! Registration hiccup',
+    he: 'אופס! בעיה ברישום'
   },
   couldNotComplete: {
-    en: 'Could not complete registration. Please try again.',
-    he: 'לא ניתן להשלים את הרישום. אנא נסה שוב.'
+    en: 'We hit a small bump. Could you try again?',
+    he: 'נתקלנו במכשול קטן. האם תוכל לנסות שוב?'
   },
   signOut: {
     en: 'Sign Out',
@@ -110,7 +109,7 @@ export const coreTranslations: TranslationCache = {
 export const translationCache: TranslationCache = { ...coreTranslations };
 
 // Helper function for external modules
-export function t(key: string, language: SupportedLanguage = 'en'): string {
+export function t(key: string, language: SupportedLanguage = 'he'): string {
   if (coreTranslations[key]?.[language]) {
     return coreTranslations[key][language];
   }

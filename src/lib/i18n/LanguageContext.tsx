@@ -5,7 +5,7 @@ import { coreTranslations, translationCache } from './translations';
 import { translateViaAPI } from './translationApi';
 
 const LanguageContext = createContext<LanguageContextType>({
-  language: 'en',
+  language: 'he',
   setLanguage: () => {},
   translate: (key) => key,
   translateAsync: async (text) => text,
@@ -13,7 +13,7 @@ const LanguageContext = createContext<LanguageContextType>({
 });
 
 export const LanguageProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
-  const [language, setLanguage] = useState<SupportedLanguage>('en');
+  const [language, setLanguage] = useState<SupportedLanguage>('he');
   const [loading, setLoading] = useState(false);
   
   // Function to get translation for core UI elements (synchronous)
