@@ -60,7 +60,8 @@ export const guestService = {
       
       console.log("Looking for unassigned guest with photo, current assigned ID:", currentAssignedId);
       
-      let query = supabase
+      // Get all eligible guests (approved, with photo, not assigned)
+      const { data: eligibleGuests, error: eligibleError } = await supabase
         .from('guests')
         .select('*')
         .eq('albumid', albumId)
@@ -68,106 +69,45 @@ export const guestService = {
         .eq('assigned', false)
         .not('photo_url', 'is', null);
       
-      if (currentAssignedId) {
-        query = query.neq('id', currentAssignedId);
+      if (eligibleError) {
+        console.error("Error fetching eligible guests:", eligibleError);
+        return { data: null, error: eligibleError };
       }
       
-      const { data, error } = await query
-        .limit(1)
-        .maybeSingle();
-      
-      if (!data || error) {
+      // If no eligible guests are found, attempt to reset assignments and try again
+      if (!eligibleGuests || eligibleGuests.length === 0) {
         console.log("No unassigned guests found, attempting to reset assignments");
-        await this.resetAllGuestAssignments(albumId);
-        console.log("Assignments reset, trying to find a guest again");
         
-        const queryAfterReset = supabase
-          .from('guests')
-          .select('*')
-          .eq('albumid', albumId)
-          .eq('approved', true)
-          .not('photo_url', 'is', null);
-            
-        if (currentAssignedId) {
-          queryAfterReset.neq('id', currentAssignedId);
-        }
-        
-        const { data: resetData, error: resetError } = await queryAfterReset
-          .limit(1)
-          .maybeSingle();
-            
-        if (!resetData || resetError) {
-          console.log("Still couldn't find a guest, last resort attempt...");
-          const lastResortQuery = await supabase
-            .from('guests')
-            .select('*')
-            .eq('albumid', albumId)
-            .eq('approved', true)
-            .not('photo_url', 'is', null)
-            .limit(1)
-            .maybeSingle();
-              
-          if (!lastResortQuery.data || lastResortQuery.error) {
-            console.error("Error fetching guest after all attempts:", lastResortQuery.error || "No guests available");
-            return { data: null, error: lastResortQuery.error || new Error("No approved guests available") };
-          }
-            
-          const markSuccess = await this.markGuestAsAssigned(lastResortQuery.data.id);
-          console.log("Guest assigned successfully:", markSuccess, lastResortQuery.data.id);
-            
-          const guest: Guest = {
-            id: lastResortQuery.data.id,
-            albumId: lastResortQuery.data.albumid,
-            guestName: lastResortQuery.data.guestname,
-            email: lastResortQuery.data.email || undefined,
-            phone: lastResortQuery.data.phone || undefined,
-            approved: lastResortQuery.data.approved,
-            created_at: lastResortQuery.data.created_at,
-            assigned: true,
-            photoUrl: lastResortQuery.data.photo_url || undefined,
-            instagram: lastResortQuery.data.instagram || undefined
-          };
-            
-          return { data: guest, error: null };
-        }
-          
-        if (!resetData) {
-          return { data: null, error: new Error("No approved guests available") };
-        }
-          
-        const markSuccess = await this.markGuestAsAssigned(resetData.id);
-        console.log("Guest assigned successfully:", markSuccess, resetData.id);
-          
-        const guest: Guest = {
-          id: resetData.id,
-          albumId: resetData.albumid,
-          guestName: resetData.guestname,
-          email: resetData.email || undefined,
-          phone: resetData.phone || undefined,
-          approved: resetData.approved,
-          created_at: resetData.created_at,
-          assigned: true,
-          photoUrl: resetData.photo_url || undefined,
-          instagram: resetData.instagram || undefined
-        };
-          
-        return { data: guest, error: null };
+        // We won't automatically reset all assignments here - this will be a specific action by the album owner
+        // Inform the client that no guests are available
+        return { data: null, error: new Error("No approved guests available for assignment") };
       }
       
-      const markSuccess = await this.markGuestAsAssigned(data.id);
-      console.log("Guest assigned successfully:", markSuccess, data.id);
+      // Randomly select a guest from eligible guests
+      // This ensures better randomization of guest assignments
+      const randomIndex = Math.floor(Math.random() * eligibleGuests.length);
+      const selectedGuest = eligibleGuests[randomIndex];
+      
+      // If we somehow didn't get a guest, return null
+      if (!selectedGuest) {
+        return { data: null, error: new Error("No guest was selected from eligible guests") };
+      }
+      
+      // Mark the selected guest as assigned
+      const markSuccess = await this.markGuestAsAssigned(selectedGuest.id);
+      console.log("Guest assigned successfully:", markSuccess, selectedGuest.id);
       
       const guest: Guest = {
-        id: data.id,
-        albumId: data.albumid,
-        guestName: data.guestname,
-        email: data.email || undefined,
-        phone: data.phone || undefined,
-        approved: data.approved,
-        created_at: data.created_at,
+        id: selectedGuest.id,
+        albumId: selectedGuest.albumid,
+        guestName: selectedGuest.guestname,
+        email: selectedGuest.email || undefined,
+        phone: selectedGuest.phone || undefined,
+        approved: selectedGuest.approved,
+        created_at: selectedGuest.created_at,
         assigned: true,
-        photoUrl: data.photo_url || undefined,
-        instagram: data.instagram || undefined
+        photoUrl: selectedGuest.photo_url || undefined,
+        instagram: selectedGuest.instagram || undefined
       };
       
       return { data: guest, error: null };
@@ -313,9 +253,53 @@ export const guestService = {
       }
       
       console.log("Successfully reset all guest assignments for album:", albumId);
+      
+      // Clear local storage assignments for this album
+      // This is important so local devices don't think they still have an assignment
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(`album_${albumId}_device_`)) {
+          keysToRemove.push(key);
+        }
+      }
+      
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      localStorage.removeItem(`accepted_challenge_${albumId}`);
+      localStorage.removeItem(`rejected_self_${albumId}`);
+      localStorage.removeItem(`completed_challenge_${albumId}`);
+      
       return true;
     } catch (error) {
       console.error("Error in resetAllGuestAssignments:", error);
+      return false;
+    }
+  },
+  
+  async isAlbumOwner(albumId: string): Promise<boolean> {
+    try {
+      const { data: album, error } = await supabase
+        .from('albums')
+        .select('owner_id, user_id')
+        .eq('id', albumId)
+        .single();
+      
+      if (error) {
+        console.error("Error checking album ownership:", error);
+        return false;
+      }
+      
+      const { data: session } = await supabase.auth.getSession();
+      const currentUserId = session?.session?.user?.id;
+      
+      // Check if current user is the album owner
+      if (currentUserId && (album.owner_id === currentUserId || album.user_id === currentUserId)) {
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error("Error in isAlbumOwner:", error);
       return false;
     }
   },

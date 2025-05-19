@@ -8,7 +8,8 @@ import { guestService } from '@/lib/guest-service';
 import { useLanguage } from '@/lib/i18n';
 import { Guest } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
-import { ChevronsRight, Camera, UserSearch, UserRound, Check, MousePointer, Sparkles } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { ChevronsRight, Camera, UserSearch, UserRound, Check, MousePointer, Sparkles, RefreshCcw } from 'lucide-react';
 
 interface FindGuestGameProps {
   albumId: string;
@@ -31,7 +32,18 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   const [guestAssigned, setGuestAssigned] = useState(false);
   const [hasRejectedSelf, setHasRejectedSelf] = useState(false);
   const [challengeAccepted, setChallengeAccepted] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const [resettingGuests, setResettingGuests] = useState(false);
   const [error, setError] = useState('');
+  
+  useEffect(() => {
+    const checkOwnership = async () => {
+      const isOwner = await guestService.isAlbumOwner(albumId);
+      setIsOwner(isOwner);
+    };
+    
+    checkOwnership();
+  }, [albumId]);
   
   useEffect(() => {
     const fetchGuests = async () => {
@@ -125,10 +137,12 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
       if (error) {
         console.error("Error getting unassigned guest:", error);
         toast({
-          title: "Error",
-          description: "Failed to assign a guest. Please try again.",
+          title: "No More Guests",
+          description: "All guests are currently assigned. Please try again later.",
           variant: "destructive"
         });
+        setChangingGuest(false);
+        setLoading(false);
         return;
       }
       
@@ -145,8 +159,8 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
       } else {
         console.log("No guests available to assign");
         toast({
-          title: "No Guests Available",
-          description: "There are no guests with photos available to assign right now.",
+          title: "All Guests Assigned",
+          description: "There are no more guests available to assign right now.",
           variant: "destructive"
         });
       }
@@ -163,6 +177,41 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
       } else {
         setLoading(false);
       }
+    }
+  };
+  
+  const handleResetAllGuests = async () => {
+    try {
+      setResettingGuests(true);
+      const success = await guestService.resetAllGuestAssignments(albumId);
+      
+      if (success) {
+        toast({
+          title: "Reset Successful",
+          description: "All guests are now available for new challenges.",
+        });
+        
+        // Clear any current assignment this user might have
+        setRandomGuest(null);
+        setGuestAssigned(false);
+        setChallengeAccepted(false);
+        setHasRejectedSelf(false);
+      } else {
+        toast({
+          title: "Reset Failed",
+          description: "Could not reset guest assignments. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (err) {
+      console.error("Error resetting guests:", err);
+      toast({
+        title: "Error",
+        description: "Failed to reset guest assignments. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setResettingGuests(false);
     }
   };
   
@@ -194,6 +243,9 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
   
   const handleTakePhoto = () => {
     if (randomGuest) {
+      // Mark that we've completed a challenge
+      localStorage.setItem(`completed_challenge_${albumId}`, 'true');
+      
       navigate(`/upload/${albumId}?gameMode=true&assignment=${randomGuest.guestName}`);
     }
   };
@@ -245,6 +297,44 @@ const FindGuestGame: React.FC<FindGuestGameProps> = ({ albumId, onClose }) => {
         <TabsContent value="find" className="space-y-4 pt-4">
           <Card className="border-none shadow-lg overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-purple-50 z-0 opacity-50"></div>
+            
+            {isOwner && (
+              <div className="absolute top-2 right-2 z-20">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="bg-white hover:bg-red-50 border-red-200 text-red-600 hover:text-red-700 hover:border-red-300 shadow-sm"
+                      disabled={resettingGuests}
+                    >
+                      {resettingGuests ? (
+                        <RefreshCcw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCcw className="h-4 w-4 mr-1" />
+                      )}
+                      Reset All Challenges
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Reset All Guest Challenges?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will make all guests available again for new assignments. 
+                        Current players will lose their assigned challenges.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleResetAllGuests} className="bg-red-600 hover:bg-red-700">
+                        Yes, Reset All
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            )}
+            
             <CardHeader className="relative z-10">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-xl sm:text-2xl font-bold text-blue-600">

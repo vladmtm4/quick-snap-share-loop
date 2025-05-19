@@ -1,3 +1,4 @@
+
 import { SupportedLanguage, TranslationCache } from './types';
 
 // Core translations that we keep locally to avoid API calls for common text
@@ -103,6 +104,30 @@ export const coreTranslations: TranslationCache = {
     en: 'Sign In',
     he: 'התחבר'
   },
+  photoGame: {
+    en: 'Wedding Photo Game',
+    he: 'משחק תמונות חתונה'
+  },
+  findGuestChallenge: {
+    en: 'Find and Photograph Challenge',
+    he: 'אתגר מציאת וצילום אורחים'
+  },
+  resetAllGuests: {
+    en: 'Reset All Guests',
+    he: 'איפוס כל האורחים'
+  },
+  resetConfirmation: {
+    en: 'Are you sure you want to reset all guest assignments?',
+    he: 'האם אתה בטוח שברצונך לאפס את כל שיוכי האורחים?'
+  },
+  thisWillReset: {
+    en: 'This will make all guests available again for assignments.',
+    he: 'פעולה זו תהפוך את כל האורחים לזמינים שוב לשיוכים.'
+  },
+  guestManagement: {
+    en: 'Guest Management',
+    he: 'ניהול אורחים'
+  }
 };
 
 // Translation cache to avoid unnecessary API calls

@@ -68,10 +68,9 @@ const GamePage: React.FC = () => {
   }, [albumId, navigate, toast]);
   
   const checkForCompletedChallenge = () => {
-    // Check localStorage for any completed challenges for this album
-    const keys = Object.keys(localStorage);
-    const challengeKeys = keys.filter(key => key.startsWith(`completed_challenge_${albumId}`));
-    setHasCompletedChallenge(challengeKeys.length > 0);
+    // Check localStorage for completed challenges for this album
+    const hasCompleted = localStorage.getItem(`completed_challenge_${albumId}`) === 'true';
+    setHasCompletedChallenge(hasCompleted);
   };
   
   const handleClose = () => {
@@ -80,6 +79,28 @@ const GamePage: React.FC = () => {
   
   const handleGoToUpload = () => {
     navigate(`/upload/${albumId}`);
+  };
+  
+  const handleNewChallenge = () => {
+    // We'll clear the completed challenge flag so they can play again
+    localStorage.removeItem(`completed_challenge_${albumId}`);
+    localStorage.removeItem(`accepted_challenge_${albumId}`);
+    localStorage.removeItem(`rejected_self_${albumId}`);
+    
+    // Remove any previous assignment from local storage
+    if (albumId) {
+      const deviceId = localStorage.getItem('device_id');
+      if (deviceId) {
+        localStorage.removeItem(`album_${albumId}_device_${deviceId}`);
+      }
+    }
+    
+    setHasCompletedChallenge(false);
+    
+    toast({
+      title: "Ready for a new challenge!",
+      description: "Let's find someone new to photograph!",
+    });
   };
   
   if (loading) {
@@ -121,7 +142,7 @@ const GamePage: React.FC = () => {
               Challenge Completed!
             </h1>
             <p className="text-gray-600 max-w-md mx-auto">
-              You've already completed a photo challenge. Would you like to upload more photos?
+              You've already completed a photo challenge. What would you like to do next?
             </p>
           </div>
           
@@ -129,7 +150,7 @@ const GamePage: React.FC = () => {
             <div className="space-y-6">
               <Alert className="bg-blue-50">
                 <AlertDescription>
-                  You can keep taking photos of the event without specific challenges.
+                  You can take more photos or start a new challenge to find someone else.
                 </AlertDescription>
               </Alert>
               
@@ -141,11 +162,18 @@ const GamePage: React.FC = () => {
                   Go Back
                 </Button>
                 <Button
+                  variant="outline"
+                  onClick={handleNewChallenge}
+                  className="border-green-200 text-green-600 hover:bg-green-50"
+                >
+                  New Challenge
+                </Button>
+                <Button
                   className="bg-blue-500 hover:bg-blue-600"
                   onClick={handleGoToUpload}
                 >
                   <Camera className="mr-2 h-4 w-4" />
-                  Upload Photos
+                  Upload More Photos
                 </Button>
               </div>
             </div>
@@ -167,7 +195,7 @@ const GamePage: React.FC = () => {
             {translate("photoGame")}
           </h1>
           <p className="text-gray-600 max-w-md mx-auto">
-            Find other guests and take photos together to earn points!
+            Find other guests and take photos together for a fun wedding game!
           </p>
         </div>
         
