@@ -100,11 +100,11 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId, onRegist
 
   return (
     <Card className="w-full max-w-md mx-auto border-2 border-primary shadow-lg backdrop-blur-sm bg-white/90">
-      <CardHeader className="bg-gradient-to-r from-blue-100 to-purple-100 rounded-t-lg pb-6">
+      <CardHeader className="bg-gradient-to-r from-purple-100 to-blue-100 rounded-t-lg pb-6">
         <div className="flex justify-center mb-4">
           <PartyPopper className="h-12 w-12 text-primary animate-bounce" />
         </div>
-        <CardTitle className="text-2xl md:text-3xl text-center font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+        <CardTitle className="text-2xl md:text-3xl text-center font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600">
           {translate("weddingGuestRegistration")}
         </CardTitle>
         <CardDescription className="text-base mt-4 text-gray-700">
@@ -124,6 +124,8 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId, onRegist
               placeholder={translate("enterFullName")}
               required
               className="border-2 border-gray-200 focus:border-primary transition-all duration-300"
+              // Fix the input field issue - ensure no pointer-events are blocked
+              style={{ pointerEvents: 'auto' }}
             />
           </div>
 
@@ -132,14 +134,14 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId, onRegist
               {translate("yourPhoto")}
             </Label>
             
-            <div className="border-2 border-dashed rounded-lg p-4 hover:border-primary cursor-pointer transition-all duration-200">
+            <div className="border-2 border-dashed rounded-lg p-4 hover:border-primary cursor-pointer transition-all duration-200 relative">
               <Input
                 id="photo"
                 type="file"
                 accept="image/*"
                 onChange={handleFileChange}
-                className="cursor-pointer opacity-0 absolute"
-                style={{ width: '100%', height: '100%', top: 0, left: 0 }}
+                className="opacity-0 absolute w-full h-full top-0 left-0 cursor-pointer z-10"
+                style={{ pointerEvents: 'auto' }}
               />
               <div className="text-center py-4">
                 <Upload className="mx-auto h-10 w-10 text-gray-400" />
@@ -162,7 +164,11 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId, onRegist
             </p>
           </div>
 
-          <Button type="submit" className="w-full h-12 text-lg shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300" disabled={isLoading}>
+          <Button 
+            type="submit" 
+            className="w-full h-12 text-lg shadow-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all duration-300" 
+            disabled={isLoading}
+          >
             {isLoading ? (
               <div className="flex items-center">
                 <span className="animate-spin mr-2">✨</span>
@@ -170,7 +176,7 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId, onRegist
               </div>
             ) : (
               <>
-                <Upload className="mr-2 h-5 w-5" />
+                <PartyPopper className="mr-2 h-5 w-5" />
                 {translate("registerForEvent")}
               </>
             )}

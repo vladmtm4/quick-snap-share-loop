@@ -28,8 +28,8 @@ export const coreTranslations: TranslationCache = {
     he: '✨ הרשמה למשחק תמונות החתונה ✨'
   },
   registrationWelcome: {
-    en: "Get ready for a fun photo adventure at our wedding! 📸 We're planning an exciting photo-finding game during the reception where you'll search for other guests in photos. Register your name and upload your best selfie to join the fun!",
-    he: "התכוננו להרפתקת תמונות מהנה בחתונה שלנו! 📸 אנחנו מתכננים משחק מלהיב של מציאת תמונות במהלך קבלת הפנים שבו תחפשו אחר אורחים אחרים בתמונות. הירשמו עם השם שלכם והעלו את הסלפי הטוב ביותר שלכם כדי להצטרף לכיף!"
+    en: "Join our exciting wedding photo game! 📸 We've prepared a fun surprise for you during the reception - sign up now to be part of the adventure! Enter your name and upload a selfie to join in on the fun!",
+    he: "הצטרפו למשחק התמונות המלהיב בחתונה שלנו! 📸 הכנו הפתעה כיפית במיוחד עבורכם במהלך קבלת הפנים - הירשמו עכשיו כדי להיות חלק מההרפתקה! הזינו את שמכם והעלו סלפי כדי להצטרף לחגיגה!"
   },
   yourName: {
     en: 'Your Name 👋',
@@ -44,8 +44,8 @@ export const coreTranslations: TranslationCache = {
     he: 'התמונה שלך 🤳'
   },
   photoHelp: {
-    en: 'Upload a clear, fun photo so others can easily find you during the game!',
-    he: 'העלה תמונה ברורה ומהנה כדי שאחרים יוכלו למצוא אותך בקלות במהלך המשחק!'
+    en: 'Upload a clear photo so others can easily find you during the wedding game!',
+    he: 'העלה תמונה ברורה כדי שאחרים יוכלו למצוא אותך בקלות במהלך משחק החתונה!'
   },
   registerForEvent: {
     en: 'Join The Fun! 🎮',
@@ -60,16 +60,16 @@ export const coreTranslations: TranslationCache = {
     he: 'יש! נרשמת! 🎉'
   },
   thankYouRegistration: {
-    en: 'Thanks for joining our photo-finding adventure at',
-    he: 'תודה שהצטרפת להרפתקת מציאת התמונות ב'
+    en: 'Thanks for joining our wedding adventure at',
+    he: 'תודה שהצטרפת להרפתקה בחתונה ב'
   },
   lookForwardSeeing: {
     en: 'We can\'t wait to see you at the reception!',
     he: 'אנחנו לא יכולים לחכות לראות אותך בקבלת הפנים!'
   },
   dontForgetPhone: {
-    en: "Don't forget your phone to play the photo game - it's going to be awesome! 📱✨",
-    he: 'אל תשכח להביא את הטלפון שלך כדי לשחק במשחק התמונות - זה הולך להיות מדהים! 📱✨'
+    en: "Don't forget your phone for the special wedding game - it's going to be amazing! 📱✨",
+    he: 'אל תשכח להביא את הטלפון שלך למשחק החתונה המיוחד - זה הולך להיות מדהים! 📱✨'
   },
   nameRequired: {
     en: 'Name Needed',

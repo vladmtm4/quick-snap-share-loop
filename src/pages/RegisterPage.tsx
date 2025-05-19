@@ -14,15 +14,15 @@ function RegisterPage() {
   const [isRegistered, setIsRegistered] = useState(false);
   const [albumTitle, setAlbumTitle] = useState<string>("");
   const { translate, language } = useLanguage();
-  const [bgColor, setBgColor] = useState("from-blue-100 to-purple-100");
+  const [bgColor, setBgColor] = useState("from-purple-100 to-blue-100");
 
   // Cycle through background colors for a fun effect
   useEffect(() => {
     const colors = [
-      "from-blue-100 to-purple-100",
-      "from-green-100 to-blue-100",
-      "from-pink-100 to-yellow-100",
-      "from-purple-100 to-pink-100"
+      "from-purple-100 to-blue-100",
+      "from-pink-100 to-purple-100",
+      "from-blue-100 to-teal-100",
+      "from-indigo-100 to-pink-100"
     ];
     
     let colorIndex = 0;
