@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { guestService } from "@/lib/guest-service";
 import { Upload } from "lucide-react";
+import { useLanguage } from "@/lib/i18n";
 
 interface GuestRegistrationProps {
   albumId: string;
@@ -18,6 +19,7 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId, onRegist
   const [isLoading, setIsLoading] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const { toast } = useToast();
+  const { translate, language } = useLanguage();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -29,8 +31,8 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId, onRegist
     e.preventDefault();
     if (!name.trim()) {
       toast({
-        title: "Name required",
-        description: "Please enter your name to continue",
+        title: translate("nameRequired"),
+        description: translate("pleaseEnterName"),
         variant: "destructive",
       });
       return;
@@ -61,8 +63,8 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId, onRegist
       }
 
       toast({
-        title: "Registration successful",
-        description: "You've been added to the guest list",
+        title: translate("registrationSuccessful"),
+        description: translate("addedToGuestList"),
       });
 
       // Clear form
@@ -77,8 +79,8 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId, onRegist
     } catch (error) {
       console.error('Error registering guest:', error);
       toast({
-        title: "Registration failed",
-        description: "Could not complete registration. Please try again.",
+        title: translate("registrationFailed"),
+        description: translate("couldNotComplete"),
         variant: "destructive",
       });
     } finally {
@@ -89,26 +91,26 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId, onRegist
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle>Wedding Guest Registration</CardTitle>
+        <CardTitle>{translate("weddingGuestRegistration")}</CardTitle>
         <CardDescription className="text-base mt-2">
-          Welcome to our wedding celebration! We're planning a special photo-finding game during the reception where guests will try to locate each other in photos. To participate, please register your name and upload a photo of yourself that other guests can use to find you during the game.
+          {translate("registrationWelcome")}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" dir={language === 'he' ? 'rtl' : 'ltr'}>
           <div className="space-y-2">
-            <Label htmlFor="name">Your Name</Label>
+            <Label htmlFor="name">{translate("yourName")}</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Enter your full name"
+              placeholder={translate("enterFullName")}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="photo">Your Photo</Label>
+            <Label htmlFor="photo">{translate("yourPhoto")}</Label>
             <Input
               id="photo"
               type="file"
@@ -117,17 +119,17 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId, onRegist
               className="cursor-pointer"
             />
             <p className="text-sm text-muted-foreground mt-1">
-              This photo will help other guests find you during the reception game
+              {translate("photoHelp")}
             </p>
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
-              <>Processing...</>
+              <>{translate("processing")}</>
             ) : (
               <>
                 <Upload className="mr-2 h-4 w-4" />
-                Register for the Event
+                {translate("registerForEvent")}
               </>
             )}
           </Button>
