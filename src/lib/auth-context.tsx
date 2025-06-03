@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
@@ -46,60 +45,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     let mounted = true;
     
-    const initialize = async () => {
-      try {
-        // Get initial session
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-        console.log("Initial session:", Boolean(initialSession));
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      console.log("Initial session:", Boolean(initialSession));
+      
+      if (mounted) {
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+        
+        if (initialSession?.user) {
+          fetchAdminStatus(initialSession.user.id);
+        } else {
+          setIsAdmin(false);
+        }
+        
+        setIsLoading(false);
+      }
+    });
+    
+    // Setup auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
+        console.log("Auth state changed:", event, Boolean(currentSession));
         
         if (mounted) {
-          setSession(initialSession);
-          setUser(initialSession?.user ?? null);
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
           
-          if (initialSession?.user) {
-            await fetchAdminStatus(initialSession.user.id);
+          if (currentSession?.user) {
+            await fetchAdminStatus(currentSession.user.id);
           } else {
             setIsAdmin(false);
           }
-          
-          setIsLoading(false);
-        }
-        
-        // Setup auth state listener
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, currentSession) => {
-            console.log("Auth state changed:", event, Boolean(currentSession));
-            
-            if (mounted) {
-              setSession(currentSession);
-              setUser(currentSession?.user ?? null);
-              
-              if (currentSession?.user) {
-                await fetchAdminStatus(currentSession.user.id);
-              } else {
-                setIsAdmin(false);
-              }
-            }
-          }
-        );
-
-        return () => {
-          mounted = false;
-          subscription.unsubscribe();
-        };
-      } catch (error) {
-        console.error("Error initializing auth:", error);
-        if (mounted) {
-          setIsLoading(false);
         }
       }
-    };
+    );
 
-    const cleanup = initialize();
-    
     return () => {
       mounted = false;
-      cleanup.then(cleanupFn => cleanupFn?.());
+      subscription.unsubscribe();
     };
   }, []);
 
