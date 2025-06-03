@@ -43,27 +43,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     console.log("AuthProvider: Initializing...");
-    setIsLoading(true);
     
     let authStateSubscription: { unsubscribe: () => void } | null = null;
 
     const initialize = async () => {
       try {
-        // First check for existing session
-        const { data: sessionData } = await supabase.auth.getSession();
-        console.log("Current session check:", Boolean(sessionData.session));
-        
-        if (sessionData.session) {
-          setSession(sessionData.session);
-          setUser(sessionData.session.user);
-          
-          // Fetch admin status if user is logged in
-          await fetchAdminStatus(sessionData.session.user.id);
-        }
-      } catch (error) {
-        console.error("Error checking session:", error);
-      } finally {
-        // Now setup auth state listener after initial session check
+        // Setup auth state listener first
         authStateSubscription = supabase.auth.onAuthStateChange(
           async (event, currentSession) => {
             console.log("Auth state changed:", event, Boolean(currentSession));
@@ -77,9 +62,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } else {
               setIsAdmin(false);
             }
+            
+            // Set loading to false after processing auth state change
+            setIsLoading(false);
           }
         ).data.subscription;
+
+        // Then check for existing session
+        const { data: sessionData } = await supabase.auth.getSession();
+        console.log("Initial session check:", Boolean(sessionData.session));
         
+        if (sessionData.session) {
+          setSession(sessionData.session);
+          setUser(sessionData.session.user);
+          await fetchAdminStatus(sessionData.session.user.id);
+        }
+        
+        // If no session, make sure loading is false
+        if (!sessionData.session) {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Error initializing auth:", error);
         setIsLoading(false);
       }
     };
