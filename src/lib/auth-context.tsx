@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
@@ -42,48 +43,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     console.log("AuthProvider: Initializing...");
+    setIsLoading(true);
     
-    let mounted = true;
-    
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      console.log("Initial session:", Boolean(initialSession));
-      
-      if (mounted) {
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
+    let authStateSubscription: { unsubscribe: () => void } | null = null;
+
+    const initialize = async () => {
+      try {
+        // First check for existing session
+        const { data: sessionData } = await supabase.auth.getSession();
+        console.log("Current session check:", Boolean(sessionData.session));
         
-        if (initialSession?.user) {
-          fetchAdminStatus(initialSession.user.id);
-        } else {
-          setIsAdmin(false);
+        if (sessionData.session) {
+          setSession(sessionData.session);
+          setUser(sessionData.session.user);
+          
+          // Fetch admin status if user is logged in
+          await fetchAdminStatus(sessionData.session.user.id);
         }
+      } catch (error) {
+        console.error("Error checking session:", error);
+      } finally {
+        // Now setup auth state listener after initial session check
+        authStateSubscription = supabase.auth.onAuthStateChange(
+          async (event, currentSession) => {
+            console.log("Auth state changed:", event, Boolean(currentSession));
+            
+            setSession(currentSession);
+            setUser(currentSession?.user ?? null);
+            
+            // Fetch admin status if user is logged in
+            if (currentSession?.user) {
+              await fetchAdminStatus(currentSession.user.id);
+            } else {
+              setIsAdmin(false);
+            }
+          }
+        ).data.subscription;
         
         setIsLoading(false);
       }
-    });
-    
-    // Setup auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        console.log("Auth state changed:", event, Boolean(currentSession));
-        
-        if (mounted) {
-          setSession(currentSession);
-          setUser(currentSession?.user ?? null);
-          
-          if (currentSession?.user) {
-            await fetchAdminStatus(currentSession.user.id);
-          } else {
-            setIsAdmin(false);
-          }
-        }
-      }
-    );
+    };
+
+    initialize();
 
     return () => {
-      mounted = false;
-      subscription.unsubscribe();
+      if (authStateSubscription) {
+        authStateSubscription.unsubscribe();
+      }
     };
   }, []);
 

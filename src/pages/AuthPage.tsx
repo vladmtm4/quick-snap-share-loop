@@ -19,16 +19,18 @@ const AuthPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [redirectionAttempted, setRedirectionAttempted] = useState(false);
 
   // Redirect if user is already authenticated
   useEffect(() => {
-    console.log("AuthPage: Auth state", { user: Boolean(user), authLoading, from });
+    console.log("AuthPage: User state updated", { user, authLoading, redirectionAttempted });
     
-    if (user && !authLoading) {
-      console.log("User is authenticated, redirecting immediately to:", from);
+    if (!authLoading && user && !redirectionAttempted) {
+      console.log("User is already authenticated, redirecting to:", from);
+      setRedirectionAttempted(true);
       navigate(from, { replace: true });
     }
-  }, [user, authLoading, navigate, from]);
+  }, [user, authLoading, navigate, from, redirectionAttempted]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +38,7 @@ const AuthPage: React.FC = () => {
     try {
       const { error } = await signIn(email, password);
       if (!error) {
-        console.log("Sign in successful, navigation will happen automatically");
+        // Navigation will be handled by the useEffect
       }
     } finally {
       setIsLoading(false);
@@ -53,7 +55,7 @@ const AuthPage: React.FC = () => {
     }
   };
 
-  // Show loading while checking auth
+  // Show loading indicator while checking session
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -65,16 +67,11 @@ const AuthPage: React.FC = () => {
     );
   }
 
-  // If user is authenticated, show redirecting message briefly
-  if (user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="mt-2 text-gray-600">Redirecting...</p>
-        </div>
-      </div>
-    );
+  // If the user is authenticated but redirection failed, force it again
+  if (user && !redirectionAttempted) {
+    console.log("User authenticated but redirection not attempted. Redirecting now...");
+    navigate(from, { replace: true });
+    return null;
   }
 
   return (
