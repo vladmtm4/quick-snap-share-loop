@@ -20,10 +20,12 @@ const AuthPage: React.FC = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Redirect if user is already authenticated - simplified logic
+  // Redirect if user is already authenticated
   useEffect(() => {
-    if (!authLoading && user) {
-      console.log("User is authenticated, redirecting to:", from);
+    console.log("AuthPage: Auth state", { user: Boolean(user), authLoading, from });
+    
+    if (user && !authLoading) {
+      console.log("User is authenticated, redirecting immediately to:", from);
       navigate(from, { replace: true });
     }
   }, [user, authLoading, navigate, from]);
@@ -34,7 +36,6 @@ const AuthPage: React.FC = () => {
     try {
       const { error } = await signIn(email, password);
       if (!error) {
-        // Navigation will be handled by the useEffect above
         console.log("Sign in successful, navigation will happen automatically");
       }
     } finally {
@@ -52,7 +53,7 @@ const AuthPage: React.FC = () => {
     }
   };
 
-  // Show loading indicator while checking session
+  // Show loading while checking auth
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -64,7 +65,7 @@ const AuthPage: React.FC = () => {
     );
   }
 
-  // If user is authenticated, don't render the auth form
+  // If user is authenticated, show redirecting message briefly
   if (user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
