@@ -19,20 +19,27 @@ const AuthPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [redirectionAttempted, setRedirectionAttempted] = useState(false);
 
   // Redirect if user is already authenticated
   useEffect(() => {
-    if (!authLoading && user) {
-      console.log("User is authenticated, redirecting to:", from);
+    console.log("AuthPage: User state updated", { user, authLoading, redirectionAttempted });
+    
+    if (!authLoading && user && !redirectionAttempted) {
+      console.log("User is already authenticated, redirecting to:", from);
+      setRedirectionAttempted(true);
       navigate(from, { replace: true });
     }
-  }, [user, authLoading, navigate, from]);
+  }, [user, authLoading, navigate, from, redirectionAttempted]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await signIn(email, password);
+      const { error } = await signIn(email, password);
+      if (!error) {
+        // Navigation will be handled by the useEffect
+      }
     } finally {
       setIsLoading(false);
     }
@@ -48,20 +55,22 @@ const AuthPage: React.FC = () => {
     }
   };
 
-  // Show loading while checking auth
+  // Show loading indicator while checking session
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="mt-2 text-gray-600">Loading...</p>
+          <p className="mt-2 text-gray-600">Checking authentication...</p>
         </div>
       </div>
     );
   }
 
-  // Don't render if user is already authenticated
-  if (user) {
+  // If the user is authenticated but redirection failed, force it again
+  if (user && !redirectionAttempted) {
+    console.log("User authenticated but redirection not attempted. Redirecting now...");
+    navigate(from, { replace: true });
     return null;
   }
 

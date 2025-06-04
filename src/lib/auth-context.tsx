@@ -24,68 +24,78 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
 
+  // Function to fetch admin status
+  const fetchAdminStatus = async (userId: string) => {
+    try {
+      const { data, error } = await fetchProfile(supabase, userId);
+      
+      if (error) {
+        console.error('Error fetching admin status:', error);
+        setIsAdmin(false);
+      } else {
+        setIsAdmin(data?.is_admin || false);
+      }
+    } catch (error) {
+      console.error('Error fetching admin status:', error);
+      setIsAdmin(false);
+    }
+  };
+
   useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
+    console.log("AuthProvider: Initializing...");
+    setIsLoading(true);
+    
+    let authStateSubscription: { unsubscribe: () => void } | null = null;
+
+    const initialize = async () => {
       try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-        setSession(initialSession);
-        setUser(initialSession?.user || null);
+        // First check for existing session
+        const { data: sessionData } = await supabase.auth.getSession();
+        console.log("Current session check:", Boolean(sessionData.session));
         
-        if (initialSession?.user) {
-          // Fetch admin status
-          try {
-            const { data } = await fetchProfile(supabase, initialSession.user.id);
-            setIsAdmin(data?.is_admin || false);
-          } catch (error) {
-            console.error("Error fetching admin status:", error);
-            setIsAdmin(false);
-          }
+        if (sessionData.session) {
+          setSession(sessionData.session);
+          setUser(sessionData.session.user);
+          
+          // Fetch admin status if user is logged in
+          await fetchAdminStatus(sessionData.session.user.id);
         }
       } catch (error) {
-        console.error("Error getting initial session:", error);
-        setSession(null);
-        setUser(null);
-        setIsAdmin(false);
+        console.error("Error checking session:", error);
       } finally {
+        // Now setup auth state listener after initial session check
+        authStateSubscription = supabase.auth.onAuthStateChange(
+          async (event, currentSession) => {
+            console.log("Auth state changed:", event, Boolean(currentSession));
+            
+            setSession(currentSession);
+            setUser(currentSession?.user ?? null);
+            
+            // Fetch admin status if user is logged in
+            if (currentSession?.user) {
+              await fetchAdminStatus(currentSession.user.id);
+            } else {
+              setIsAdmin(false);
+            }
+          }
+        ).data.subscription;
+        
         setIsLoading(false);
       }
     };
 
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.log("Auth state change:", event, newSession ? "session exists" : "no session");
-        
-        setSession(newSession);
-        setUser(newSession?.user || null);
-
-        if (newSession?.user) {
-          // Fetch admin status for new session
-          try {
-            const { data } = await fetchProfile(supabase, newSession.user.id);
-            setIsAdmin(data?.is_admin || false);
-          } catch (error) {
-            console.error("Error fetching admin status on auth change:", error);
-            setIsAdmin(false);
-          }
-        } else {
-          setIsAdmin(false);
-        }
-        
-        setIsLoading(false);
-      }
-    );
-
-    getInitialSession();
+    initialize();
 
     return () => {
-      subscription.unsubscribe();
+      if (authStateSubscription) {
+        authStateSubscription.unsubscribe();
+      }
     };
   }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
+      setIsLoading(true);
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -113,11 +123,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: "destructive",
       });
       return { error };
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string) => {
     try {
+      setIsLoading(true);
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -146,15 +159,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: "destructive",
       });
       return { error };
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const signOut = async () => {
     try {
+      setIsLoading(true);
       await supabase.auth.signOut();
-      setSession(null);
-      setUser(null);
-      setIsAdmin(false);
       toast({
         title: "Signed out successfully",
       });
@@ -164,6 +177,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
