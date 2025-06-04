@@ -30,7 +30,7 @@ export const coreTranslations: TranslationCache = {
   },
   registrationWelcome: {
     en: "We've prepared a little surprise for you! During the wedding there will be a game. To participate, register here. Don't forget your full name and photo! 😊\n\nWith love,\nVlad and Orin 💕",
-    he: "אז הכנו לכם הפתעה קטנה 🎉\n.במהלך החתונה יתקיים משחק\nכדי להשתתף בו הירשמו כאן .📝\nלא לשכוח שם מלא ותמונה! 📸😊\n\nבאהבה,\nולד ואורין 💕"
+    he: "אז הכנו לכם הפתעה קטנה 🎉\n.במהלך החתונה יתקיים משחק.\nכדי להשתתף בו הירשמו כאן .📝\nלא לשכוח שם מלא ותמונה! 📸😊\n\nבאהבה,\nולד ואורין 💕"
   },
   yourName: {
     en: 'Your Name',
