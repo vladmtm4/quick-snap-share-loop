@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Play, Pause, Maximize, Minimize } from "lucide-react";
@@ -146,6 +145,8 @@ const Slideshow: React.FC<SlideshowProps> = ({
           style={{
             filter: 'drop-shadow(0 20px 40px rgba(0, 0, 0, 0.3))',
             boxShadow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 60px rgba(0, 0, 0, 0.4)',
+            mask: 'radial-gradient(ellipse at center, black 60%, transparent 90%)',
+            WebkitMask: 'radial-gradient(ellipse at center, black 60%, transparent 90%)',
           }}
         />
       </div>
