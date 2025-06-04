@@ -29,8 +29,8 @@ export const coreTranslations: TranslationCache = {
     he: 'משחק תמונות החתונה 📸'
   },
   registrationWelcome: {
-    en: "Join our wedding photo game! Throughout the celebration, you'll find QR codes around the venue. Scan them with your phone to unlock fun photo challenges and games. Register now so we know you're playing!",
-    he: "הצטרפו למשחק התמונות שלנו! במהלך החגיגה תמצאו ברחבי המקום קודי QR. סרקו אותם עם הטלפון כדי לפתוח אתגרי צילום ומשחקים כיפיים. הירשמו עכשיו כדי שנדע שאתם משתתפים!"
+    en: "We've prepared a little surprise for you! During the wedding there will be a game. To participate, register here. Don't forget your full name and photo! 😊\n\nWith love,\nVlad and Orin 💕",
+    he: "אז הכנו לכם הפתעה קטנה 🎉\nבמהלך החתונה יתקיים משחק\nכדי להשתתף בו הירשמו כאן 📝\nלא לשכוח שם מלא ותמונה! 📸😊\n\nבאהבה,\nולד ואורין 💕"
   },
   yourName: {
     en: 'Your Name',
@@ -42,15 +42,15 @@ export const coreTranslations: TranslationCache = {
   },
   yourPhoto: {
     en: 'Your Photo (Optional)',
-    he: 'התמונה שלך (אופציונלי)'
+    he: 'התמונה שלך (חובה! 📸)'
   },
   photoHelp: {
     en: 'Add a photo so other guests can recognize you during the game!',
-    he: 'הוסף תמונה כדי שאורחים אחרים יוכלו לזהות אותך במהלך המשחק!'
+    he: 'הוסף תמונה כדי שאורחים אחרים יוכלו לזהות אותך במהלך המשחק! 😄'
   },
   registerForEvent: {
     en: 'Join the Game',
-    he: 'הצטרף למשחק'
+    he: 'הצטרף למשחק 🎮'
   },
   processing: {
     en: 'Registering...',
@@ -58,7 +58,7 @@ export const coreTranslations: TranslationCache = {
   },
   registrationComplete: {
     en: 'You\'re All Set!',
-    he: 'הכל מוכן!'
+    he: 'הכל מוכן! 🎉'
   },
   thankYouRegistration: {
     en: 'Thanks for joining our photo game at',
@@ -70,7 +70,7 @@ export const coreTranslations: TranslationCache = {
   },
   dontForgetPhone: {
     en: "Keep your phone handy to scan QR codes and play the photo challenges throughout the wedding!",
-    he: 'שמור את הטלפון בהישג יד כדי לסרוק קודי QR ולשחק באתגרי הצילום במהלך החתונה!'
+    he: 'שמור את הטלפון בהישג יד כדי לסרוק קודי QR ולשחק באתגרי הצילום במהלך החתונה! 📱'
   },
   nameRequired: {
     en: 'Name Required',
@@ -82,11 +82,11 @@ export const coreTranslations: TranslationCache = {
   },
   registrationSuccessful: {
     en: 'Registration successful!',
-    he: 'הרישום בוצע בהצלחה!'
+    he: 'הרישום בוצע בהצלחה! 🎉'
   },
   addedToGuestList: {
     en: "You're registered for the photo game!",
-    he: 'נרשמת למשחק התמונות!'
+    he: 'נרשמת למשחק התמונות! 📸'
   },
   registrationFailed: {
     en: 'Registration failed',
