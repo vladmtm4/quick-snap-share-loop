@@ -142,7 +142,10 @@ const Slideshow: React.FC<SlideshowProps> = ({
         <img 
           src={currentPhoto.url} 
           alt={`Slide ${currentIndex + 1}`} 
-          className="max-h-full max-w-full object-contain z-10 relative"
+          className="max-h-full max-w-full object-contain z-10 relative shadow-2xl border border-white/10"
+          style={{
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+          }}
         />
       </div>
       
