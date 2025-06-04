@@ -22,6 +22,8 @@ const AuthPage: React.FC = () => {
 
   // Redirect if user is already authenticated
   useEffect(() => {
+    console.log("AuthPage: Check auth state", { user: !!user, authLoading });
+    
     if (!authLoading && user) {
       console.log("User is authenticated, redirecting to:", from);
       navigate(from, { replace: true });
@@ -34,7 +36,7 @@ const AuthPage: React.FC = () => {
     try {
       const { error } = await signIn(email, password);
       if (!error) {
-        // Navigation will be handled by the useEffect
+        console.log("Sign in successful, navigation will be handled by useEffect");
       }
     } finally {
       setIsLoading(false);
@@ -51,19 +53,19 @@ const AuthPage: React.FC = () => {
     }
   };
 
-  // Show loading indicator while checking session
+  // Show loading while checking auth
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="mt-2 text-gray-600">Checking authentication...</p>
+          <p className="mt-2 text-gray-600">Loading...</p>
         </div>
       </div>
     );
   }
 
-  // If user is authenticated, don't render the form
+  // Don't render if user is already authenticated
   if (user) {
     return null;
   }

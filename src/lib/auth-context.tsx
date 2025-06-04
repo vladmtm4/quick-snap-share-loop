@@ -24,95 +24,99 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { toast } = useToast();
 
-  // Function to fetch admin status
-  const fetchAdminStatus = async (userId: string) => {
-    try {
-      const { data, error } = await fetchProfile(supabase, userId);
-      
-      if (error) {
-        console.error('Error fetching admin status:', error);
-        setIsAdmin(false);
-      } else {
-        setIsAdmin(data?.is_admin || false);
-      }
-    } catch (error) {
-      console.error('Error fetching admin status:', error);
-      setIsAdmin(false);
-    }
-  };
-
   useEffect(() => {
-    console.log("AuthProvider: Initializing...");
+    console.log("AuthProvider: Starting initialization");
     
-    let mounted = true;
-    
-    const initializeAuth = async () => {
+    let isMounted = true;
+
+    // Initialize auth state
+    const initAuth = async () => {
       try {
-        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        // Get current session
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
         
-        if (!mounted) return;
-        
-        if (error) {
-          console.log("Session error detected, clearing...", error);
-          await supabase.auth.signOut();
-          setSession(null);
-          setUser(null);
-          setIsAdmin(false);
-        } else if (currentSession) {
-          console.log("Valid session found:", Boolean(currentSession));
+        if (!isMounted) return;
+
+        if (currentSession?.user) {
+          console.log("Found existing session for user:", currentSession.user.id);
           setSession(currentSession);
           setUser(currentSession.user);
-          await fetchAdminStatus(currentSession.user.id);
+          
+          // Fetch admin status
+          try {
+            const { data } = await fetchProfile(supabase, currentSession.user.id);
+            if (isMounted) {
+              setIsAdmin(data?.is_admin || false);
+            }
+          } catch (error) {
+            console.error("Error fetching admin status:", error);
+            if (isMounted) {
+              setIsAdmin(false);
+            }
+          }
         } else {
-          console.log("No session found");
+          console.log("No existing session found");
           setSession(null);
           setUser(null);
           setIsAdmin(false);
         }
       } catch (error) {
-        console.error("Error during session check:", error);
-        if (mounted) {
+        console.error("Error initializing auth:", error);
+        if (isMounted) {
           setSession(null);
           setUser(null);
           setIsAdmin(false);
         }
       } finally {
-        if (mounted) {
+        if (isMounted) {
+          console.log("Auth initialization complete");
           setIsLoading(false);
         }
       }
     };
 
-    initializeAuth();
-    
-    // Set up auth state listener
+    // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        console.log("Auth state changed:", event, Boolean(currentSession));
+      async (event, newSession) => {
+        console.log("Auth state change:", event, newSession ? "session exists" : "no session");
         
-        if (!mounted) return;
-        
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-        
-        // Fetch admin status if user is logged in
-        if (currentSession?.user) {
-          await fetchAdminStatus(currentSession.user.id);
+        if (!isMounted) return;
+
+        setSession(newSession);
+        setUser(newSession?.user || null);
+
+        if (newSession?.user) {
+          // Fetch admin status for new session
+          try {
+            const { data } = await fetchProfile(supabase, newSession.user.id);
+            if (isMounted) {
+              setIsAdmin(data?.is_admin || false);
+            }
+          } catch (error) {
+            console.error("Error fetching admin status on auth change:", error);
+            if (isMounted) {
+              setIsAdmin(false);
+            }
+          }
         } else {
-          setIsAdmin(false);
+          if (isMounted) {
+            setIsAdmin(false);
+          }
         }
       }
     );
 
+    // Initialize
+    initAuth();
+
     return () => {
-      mounted = false;
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
-      setIsLoading(true);
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -140,14 +144,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: "destructive",
       });
       return { error };
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string) => {
     try {
-      setIsLoading(true);
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -176,14 +177,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: "destructive",
       });
       return { error };
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const signOut = async () => {
     try {
-      setIsLoading(true);
       await supabase.auth.signOut();
       setSession(null);
       setUser(null);
@@ -197,8 +195,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
