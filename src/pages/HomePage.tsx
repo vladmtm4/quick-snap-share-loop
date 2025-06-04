@@ -15,24 +15,57 @@ const HomePage: React.FC = () => {
   
   useEffect(() => {
     async function loadAlbums() {
+      console.log("HomePage: Loading albums, user:", Boolean(user));
       setLoading(true);
       try {
-        console.log("HomePage: Loading albums");
+        if (!user) {
+          console.log("HomePage: No user found, skipping album load");
+          setAlbums([]);
+          return;
+        }
+        
+        console.log("HomePage: User found, loading albums");
         const allAlbums = await supabaseService.getAllAlbums();
-        console.log("HomePage: All albums loaded:", allAlbums);
+        console.log("HomePage: Albums loaded:", allAlbums.length);
         setAlbums(allAlbums);
       } catch (error) {
         console.error("HomePage: Error loading albums:", error);
+        setAlbums([]);
       } finally {
         setLoading(false);
       }
     }
     
+    // Only load albums if we have a user
     if (user) {
       loadAlbums();
+    } else {
+      // If no user, just set loading to false
+      setLoading(false);
+      setAlbums([]);
     }
-  }, [user]);
+  }, [user]); // Add user as dependency
   
+  // Show loading state while albums are being fetched
+  if (loading && user) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="container max-w-3xl py-8 px-4">
+          <div className="mb-8 text-center prose prose-lg mx-auto">
+            <h1 className="font-bold">QuickSnap</h1>
+            <p>Loading your albums...</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <Skeleton key={idx} className="h-32 rounded-lg" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
