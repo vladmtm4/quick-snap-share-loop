@@ -20,10 +20,8 @@ const Slideshow: React.FC<SlideshowProps> = ({
   loadPhotos
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [targetIndex, setTargetIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -31,34 +29,29 @@ const Slideshow: React.FC<SlideshowProps> = ({
   useEffect(() => {
     if (photos.length > 0 && currentIndex >= photos.length) {
       setCurrentIndex(0);
-      setTargetIndex(0);
     }
   }, [photos.length, currentIndex]);
   
   const goToNextSlide = useCallback(async () => {
-    if (photos.length === 0 || isTransitioning) return;
-    
-    const nextIdx = (currentIndex + 1) % photos.length;
-    setTargetIndex(nextIdx);
-    setIsTransitioning(true);
+    if (photos.length === 0) return;
     
     // Load fresh photos from database before changing the slide
     await loadPhotos();
     
-    // Wait for transition to complete
-    setTimeout(() => {
-      setCurrentIndex(nextIdx);
-      setIsTransitioning(false);
-    }, 500);
-  }, [photos.length, loadPhotos, isTransitioning, currentIndex]);
+    setCurrentIndex((prevIndex) => {
+      // After loading fresh photos, calculate the new index
+      const newIndex = (prevIndex + 1) % photos.length;
+      return newIndex;
+    });
+  }, [photos.length, loadPhotos]);
   
   // Handle auto-advancing slides when playing
   useEffect(() => {
-    if (isPlaying && photos.length > 0 && !isTransitioning) {
+    if (isPlaying && photos.length > 0) {
       const timer = setTimeout(goToNextSlide, interval);
       return () => clearTimeout(timer);
     }
-  }, [currentIndex, isPlaying, photos.length, interval, goToNextSlide, isTransitioning]);
+  }, [currentIndex, isPlaying, photos.length, interval, goToNextSlide]);
   
   // Toggle play/pause
   const togglePlayPause = () => {
@@ -71,24 +64,18 @@ const Slideshow: React.FC<SlideshowProps> = ({
   
   // Manual navigation between slides with fresh data load
   const handleManualNav = async (direction: 'prev' | 'next') => {
-    if (isTransitioning) return;
-    
-    const nextIdx = direction === 'prev' 
-      ? (currentIndex === 0 ? photos.length - 1 : currentIndex - 1)
-      : (currentIndex + 1) % photos.length;
-    
-    setTargetIndex(nextIdx);
-    setIsTransitioning(true);
-    
     // Always load fresh photos first
     await loadPhotos();
     
     if (photos.length === 0) return;
     
-    setTimeout(() => {
-      setCurrentIndex(nextIdx);
-      setIsTransitioning(false);
-    }, 500);
+    setCurrentIndex((prevIndex) => {
+      if (direction === 'prev') {
+        return prevIndex === 0 ? photos.length - 1 : prevIndex - 1;
+      } else {
+        return (prevIndex + 1) % photos.length;
+      }
+    });
   };
   
   // Fullscreen functionality
@@ -132,84 +119,40 @@ const Slideshow: React.FC<SlideshowProps> = ({
   }
   
   const currentPhoto = photos[currentIndex];
-  const targetPhoto = photos[targetIndex];
   
   return (
     <div className="photo-slideshow-container min-h-screen bg-black relative overflow-hidden">
-      {/* Current photo blurred background */}
+      {/* Blurred background image */}
       <div 
-        className={`absolute inset-0 w-full h-full transition-opacity duration-500 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}
+        className="absolute inset-0 w-full h-full"
         style={{
           backgroundImage: `url(${currentPhoto.url})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           filter: 'blur(20px)',
-          transform: 'scale(1.1)',
+          transform: 'scale(1.1)', // Slightly zoom to avoid blur edge artifacts
         }}
       />
-      
-      {/* Target photo blurred background (for smooth transition) */}
-      {isTransitioning && targetPhoto && (
-        <div 
-          className="absolute inset-0 w-full h-full transition-opacity duration-500 opacity-100"
-          style={{
-            backgroundImage: `url(${targetPhoto.url})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            filter: 'blur(20px)',
-            transform: 'scale(1.1)',
-          }}
-        />
-      )}
       
       {/* Dark overlay to reduce background intensity */}
       <div className="absolute inset-0 bg-black/40" />
       
-      {/* Main photo container with crossfade */}
+      {/* Main photo container */}
       <div className="absolute inset-0 flex items-center justify-center">
-        {/* Current photo */}
         <img 
           src={currentPhoto.url} 
           alt={`Slide ${currentIndex + 1}`} 
-          className={`max-h-full max-w-full object-contain z-10 relative transition-opacity duration-500 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}
+          className="max-h-full max-w-full object-contain z-10 relative"
           style={{
             filter: 'drop-shadow(0 20px 40px rgba(0, 0, 0, 0.3))',
             boxShadow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 60px rgba(0, 0, 0, 0.4)',
-            mask: 'linear-gradient(to right, transparent 0%, black 2%, black 98%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 2%, black 98%, transparent 100%)',
-            WebkitMask: 'linear-gradient(to right, transparent 0%, black 2%, black 98%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 2%, black 98%, transparent 100%)',
+            mask: 'linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 3%, black 97%, transparent 100%)',
+            WebkitMask: 'linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 3%, black 97%, transparent 100%)',
             maskComposite: 'intersect',
             WebkitMaskComposite: 'source-in',
           }}
         />
-        
-        {/* Target photo (for crossfade) */}
-        {isTransitioning && targetPhoto && (
-          <img 
-            src={targetPhoto.url} 
-            alt={`Slide ${targetIndex + 1}`} 
-            className="absolute max-h-full max-w-full object-contain z-10 transition-opacity duration-500 opacity-100"
-            style={{
-              filter: 'drop-shadow(0 20px 40px rgba(0, 0, 0, 0.3))',
-              boxShadow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 60px rgba(0, 0, 0, 0.4)',
-              mask: 'linear-gradient(to right, transparent 0%, black 2%, black 98%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 2%, black 98%, transparent 100%)',
-              WebkitMask: 'linear-gradient(to right, transparent 0%, black 2%, black 98%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 2%, black 98%, transparent 100%)',
-              maskComposite: 'intersect',
-              WebkitMaskComposite: 'source-in',
-            }}
-          />
-        )}
       </div>
-      
-      {/* Preload next few images for smoother transitions */}
-      {photos.slice(currentIndex + 1, currentIndex + 4).map((photo, index) => (
-        <img 
-          key={`preload-${currentIndex + index + 1}`}
-          src={photo.url} 
-          alt="" 
-          className="hidden" 
-          loading="eager"
-        />
-      ))}
       
       <div className="absolute top-4 left-4 z-20">
         <Button 
