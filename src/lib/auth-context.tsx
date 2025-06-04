@@ -120,7 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -132,6 +132,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           variant: "destructive",
         });
         return { error };
+      }
+      
+      // Immediately update the user state with the returned data
+      if (data.session) {
+        console.log("Sign in successful, updating user state:", data.session.user.id);
+        setSession(data.session);
+        setUser(data.session.user);
+        
+        // Fetch admin status
+        await fetchAdminStatus(data.session.user.id);
       }
       
       toast({

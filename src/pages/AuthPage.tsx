@@ -64,7 +64,12 @@ const AuthPage: React.FC = () => {
     try {
       const { error } = await signIn(email, password);
       if (!error) {
-        // Navigation will be handled by the useEffect
+        console.log("Sign in successful, navigating to:", from);
+        // Small delay to ensure state updates are processed
+        setTimeout(() => {
+          hasRedirectedRef.current = true;
+          navigate(from, { replace: true });
+        }, 100);
       }
     } finally {
       setIsLoading(false);
@@ -75,7 +80,15 @@ const AuthPage: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await signUp(email, password);
+      const { error } = await signUp(email, password);
+      if (!error) {
+        console.log("Sign up successful, navigating to:", from);
+        // Small delay to ensure state updates are processed
+        setTimeout(() => {
+          hasRedirectedRef.current = true;
+          navigate(from, { replace: true });
+        }, 100);
+      }
     } finally {
       setIsLoading(false);
     }
