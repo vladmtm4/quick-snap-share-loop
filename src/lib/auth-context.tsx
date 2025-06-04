@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
@@ -20,119 +20,76 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const { toast } = useToast();
-  const authCheckComplete = useRef(false);
 
-  // Function to check admin status - simplified
-  const checkAdminStatus = async (userId: string) => {
+  // Function to fetch admin status - simplified
+  const fetchAdminStatus = async (userId: string) => {
     try {
       const { data } = await fetchProfile(supabase, userId);
       return !!data?.is_admin;
     } catch (error) {
-      console.error('Admin check failed:', error);
+      console.error('Error checking admin status:', error);
       return false;
     }
   };
 
-  // One-time initialization
+  // Simplified initialization
   useEffect(() => {
-    console.log("QuickSnap: Starting auth initialization");
-    
-    let mounted = true;
-    let authListener: { subscription: { unsubscribe: () => void } } | null = null;
-    
-    const initAuth = async () => {
-      if (authCheckComplete.current) return;
+    // Just check session once
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        setSession(data.session);
+        setUser(data.session.user);
+        fetchAdminStatus(data.session.user.id).then(setIsAdmin);
+      }
+    });
+
+    // Set up listener
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, newSession) => {
+      setSession(newSession);
+      setUser(newSession?.user || null);
       
-      try {
-        setIsLoading(true);
-        
-        // Get current session directly
-        const sessionResult = await supabase.auth.getSession();
-        const currentSession = sessionResult.data.session;
-        
-        if (mounted) {
-          if (currentSession) {
-            console.log("QuickSnap: Found existing session");
-            setSession(currentSession);
-            setUser(currentSession.user);
-            const adminStatus = await checkAdminStatus(currentSession.user.id);
-            setIsAdmin(adminStatus);
-          } else {
-            console.log("QuickSnap: No existing session");
-          }
-          
-          // Set up auth state listener
-          const { data } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-            console.log(`QuickSnap: Auth changed (${event})`, !!newSession);
-            
-            if (mounted) {
-              setSession(newSession);
-              setUser(newSession?.user || null);
-              
-              if (newSession?.user) {
-                const adminStatus = await checkAdminStatus(newSession.user.id);
-                setIsAdmin(adminStatus);
-              } else {
-                setIsAdmin(false);
-              }
-            }
-          });
-          
-          authListener = data;
-          authCheckComplete.current = true;
-        }
-      } catch (error) {
-        console.error("QuickSnap: Auth init error", error);
-      } finally {
-        if (mounted) {
-          setIsLoading(false);
-        }
+      if (newSession?.user) {
+        fetchAdminStatus(newSession.user.id).then(setIsAdmin);
+      } else {
+        setIsAdmin(false);
       }
-    };
-    
-    initAuth();
-    
-    // Cleanup on unmount
+    });
+
+    // Cleanup
     return () => {
-      mounted = false;
-      if (authListener) {
-        authListener.subscription.unsubscribe();
-      }
+      authListener.subscription.unsubscribe();
     };
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    setIsLoading(true);
-    
     try {
-      const result = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
-      if (result.error) {
+      if (error) {
         toast({
           title: "Sign in failed",
-          description: result.error.message,
+          description: error.message,
           variant: "destructive",
         });
-        return { error: result.error };
+        return { error };
       }
       
-      // Update state directly for immediate feedback
-      setSession(result.data.session);
-      setUser(result.data.user);
+      // Manually update state
+      setSession(data.session);
+      setUser(data.user);
       
-      if (result.data.user) {
-        const adminStatus = await checkAdminStatus(result.data.user.id);
-        setIsAdmin(adminStatus);
+      if (data.user) {
+        const isUserAdmin = await fetchAdminStatus(data.user.id);
+        setIsAdmin(isUserAdmin);
       }
       
       toast({
-        title: "Sign in successful",
-        description: "Welcome back!",
+        title: "Signed in successfully",
+        variant: "default",
       });
       
       return { error: null };
@@ -143,14 +100,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: "destructive",
       });
       return { error };
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string) => {
-    setIsLoading(true);
-    
     try {
       const result = await supabase.auth.signUp({
         email,
@@ -179,14 +132,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: "destructive",
       });
       return { error };
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const signOut = async () => {
-    setIsLoading(true);
-    
     try {
       await supabase.auth.signOut();
       
@@ -205,8 +154,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -216,7 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session,
         user,
         isAdmin,
-        isLoading,
+        isLoading: false, // Always set to false to avoid loading issues
         signIn,
         signUp,
         signOut,

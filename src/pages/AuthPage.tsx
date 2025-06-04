@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -10,99 +10,65 @@ import Header from "@/components/Header";
 import { Loader2 } from "lucide-react";
 
 const AuthPage: React.FC = () => {
-  const { signIn, signUp, user, isLoading: authLoading } = useAuth();
+  const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as any)?.from?.pathname || "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const redirectPending = useRef(false);
-  const maxWaitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
-  // Set up a maximum wait time for redirecting
+  // Force the form to show after a short delay
   useEffect(() => {
-    if (authLoading && !maxWaitTimeoutRef.current) {
-      maxWaitTimeoutRef.current = setTimeout(() => {
-        console.log("QuickSnap: Auth wait timeout reached");
-        
-        if (user && !redirectPending.current) {
-          redirectPending.current = true;
-          navigate(from, { replace: true });
-        }
-      }, 3000); // 3 second maximum wait
-    }
+    const timer = setTimeout(() => {
+      setShowForm(true);
+    }, 1000);
     
-    return () => {
-      if (maxWaitTimeoutRef.current) {
-        clearTimeout(maxWaitTimeoutRef.current);
-        maxWaitTimeoutRef.current = null;
-      }
-    };
-  }, [authLoading, user, navigate, from]);
+    return () => clearTimeout(timer);
+  }, []);
 
-  // Handle redirection when user is authenticated
+  // Simple redirect if user exists
   useEffect(() => {
-    if (!authLoading && user && !redirectPending.current) {
-      console.log("QuickSnap: User authenticated, redirecting");
-      redirectPending.current = true;
+    if (user) {
       navigate(from, { replace: true });
     }
-  }, [user, authLoading, navigate, from]);
+  }, [user, navigate, from]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSubmitting(true);
     
     try {
-      const { error } = await signIn(email, password);
-      
-      if (!error) {
-        console.log("QuickSnap: Sign in successful");
-        
-        // Small delay to allow auth state to propagate
-        setTimeout(() => {
-          redirectPending.current = true;
-          navigate(from, { replace: true });
-        }, 100);
+      const result = await signIn(email, password);
+      if (!result.error) {
+        // Wait briefly for auth to update
+        setTimeout(() => navigate(from, { replace: true }), 100);
       }
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSubmitting(true);
     
     try {
       await signUp(email, password);
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  // Show a simple loading state with timeout protection
-  if (authLoading && !redirectPending.current) {
+  // Show a brief loading state, but force form to appear after timeout
+  if (!showForm && !user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="mt-2 text-gray-600">Verifying your session...</p>
-          <p className="mt-1 text-sm text-gray-400">This will only take a moment</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Don't render form during redirect
-  if (redirectPending.current) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="mt-2 text-gray-600">Redirecting you...</p>
+          <p className="mt-2 text-gray-600">Just a moment...</p>
         </div>
       </div>
     );
@@ -148,8 +114,8 @@ const AuthPage: React.FC = () => {
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Signing in..." : "Sign In"}
+                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                    {isSubmitting ? "Signing in..." : "Sign In"}
                   </Button>
                 </form>
               </TabsContent>
@@ -176,8 +142,8 @@ const AuthPage: React.FC = () => {
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Creating account..." : "Create Account"}
+                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                    {isSubmitting ? "Creating account..." : "Create Account"}
                   </Button>
                 </form>
               </TabsContent>
