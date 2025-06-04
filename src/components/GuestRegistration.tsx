@@ -142,10 +142,10 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId, onRegist
                 {translate("registrationComplete")}
               </h2>
               <p className="text-gray-600 text-lg mb-2">
-                ברכות {name}! נרשמת בהצלחה
+                היי {name}! נרשמת בהצלחה
               </p>
               <p className="text-sm text-gray-500">
-                הרישום הושלם בהצלחה למשחק החתונה המיוחד
+                עכשיו חפש קודי QR ברחבי המקום כדי להתחיל לשחק
               </p>
             </div>
             <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg">
@@ -238,7 +238,7 @@ const GuestRegistration: React.FC<GuestRegistrationProps> = ({ albumId, onRegist
           >
             {isLoading ? (
               <div className="flex items-center">
-                <span className="animate-spin mr-2">✨</span>
+                <span className="animate-spin mr-2">⏳</span>
                 {translate("processing")}
               </div>
             ) : (

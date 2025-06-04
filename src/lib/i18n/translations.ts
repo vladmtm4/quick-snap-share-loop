@@ -25,76 +25,76 @@ export const coreTranslations: TranslationCache = {
   },
   // Registration page translations
   weddingGuestRegistration: {
-    en: '✨ Wedding Photo Game Registration ✨',
-    he: '✨ הרשמה למשחק תמונות החתונה ✨'
+    en: 'Wedding Photo Game 📸',
+    he: 'משחק תמונות החתונה 📸'
   },
   registrationWelcome: {
-    en: "Join our exciting wedding photo game! 📸 We've prepared a fun surprise for you during the reception - sign up now to be part of the adventure! Enter your name and upload a selfie to join in on the fun!",
-    he: "הצטרפו למשחק התמונות המלהיב בחתונה שלנו! 📸 הכנו הפתעה כיפית במיוחד עבורכם במהלך קבלת הפנים - הירשמו עכשיו כדי להיות חלק מההרפתקה! הזינו את שמכם והעלו סלפי כדי להצטרף לחגיגה!"
+    en: "Join our wedding photo game! Throughout the celebration, you'll find QR codes around the venue. Scan them with your phone to unlock fun photo challenges and games. Register now so we know you're playing!",
+    he: "הצטרפו למשחק התמונות שלנו! במהלך החגיגה תמצאו ברחבי המקום קודי QR. סרקו אותם עם הטלפון כדי לפתוח אתגרי צילום ומשחקים כיפיים. הירשמו עכשיו כדי שנדע שאתם משתתפים!"
   },
   yourName: {
-    en: 'Your Name 👋',
-    he: 'השם שלך 👋'
+    en: 'Your Name',
+    he: 'השם שלך'
   },
   enterFullName: {
-    en: 'Enter your full name here',
-    he: 'הכנס את שמך המלא כאן'
+    en: 'Enter your full name',
+    he: 'הכנס את שמך המלא'
   },
   yourPhoto: {
-    en: 'Your Photo 🤳',
-    he: 'התמונה שלך 🤳'
+    en: 'Your Photo (Optional)',
+    he: 'התמונה שלך (אופציונלי)'
   },
   photoHelp: {
-    en: 'Upload a clear photo so others can easily find you during the wedding game!',
-    he: 'העלה תמונה ברורה כדי שאחרים יוכלו למצוא אותך בקלות במהלך משחק החתונה!'
+    en: 'Add a photo so other guests can recognize you during the game!',
+    he: 'הוסף תמונה כדי שאורחים אחרים יוכלו לזהות אותך במהלך המשחק!'
   },
   registerForEvent: {
-    en: 'Join The Fun! 🎮',
-    he: 'הצטרף לכיף! 🎮'
+    en: 'Join the Game',
+    he: 'הצטרף למשחק'
   },
   processing: {
-    en: 'Magic Happening... ✨',
-    he: 'קסם קורה... ✨'
+    en: 'Registering...',
+    he: 'נרשם...'
   },
   registrationComplete: {
-    en: 'Woohoo! You\'re In! 🎉',
-    he: 'יש! נרשמת! 🎉'
+    en: 'You\'re All Set!',
+    he: 'הכל מוכן!'
   },
   thankYouRegistration: {
-    en: 'Thanks for joining our wedding adventure at',
-    he: 'תודה שהצטרפת להרפתקה בחתונה ב'
+    en: 'Thanks for joining our photo game at',
+    he: 'תודה שהצטרפת למשחק התמונות שלנו ב'
   },
   lookForwardSeeing: {
-    en: 'We can\'t wait to see you at the reception!',
-    he: 'אנחנו לא יכולים לחכות לראות אותך בקבלת הפנים!'
+    en: 'Look for QR codes around the venue to start playing!',
+    he: 'חפש קודי QR ברחבי המקום כדי להתחיל לשחק!'
   },
   dontForgetPhone: {
-    en: "Don't forget your phone for the special wedding game - it's going to be amazing! 📱✨",
-    he: 'אל תשכח להביא את הטלפון שלך למשחק החתונה המיוחד - זה הולך להיות מדהים! 📱✨'
+    en: "Keep your phone handy to scan QR codes and play the photo challenges throughout the wedding!",
+    he: 'שמור את הטלפון בהישג יד כדי לסרוק קודי QR ולשחק באתגרי הצילום במהלך החתונה!'
   },
   nameRequired: {
-    en: 'Name Needed',
+    en: 'Name Required',
     he: 'שם נדרש'
   },
   pleaseEnterName: {
-    en: 'Please enter your name to join the fun',
-    he: 'אנא הכנס את שמך כדי להצטרף לחגיגה'
+    en: 'Please enter your name to join',
+    he: 'אנא הכנס את שמך כדי להצטרף'
   },
   registrationSuccessful: {
-    en: 'Registration successful! 🎊',
-    he: 'הרישום בוצע בהצלחה! 🎊'
+    en: 'Registration successful!',
+    he: 'הרישום בוצע בהצלחה!'
   },
   addedToGuestList: {
-    en: "You've been added to the guest list! Get ready for the fun!",
-    he: 'נוספת לרשימת האורחים! התכונן לכיף!'
+    en: "You're registered for the photo game!",
+    he: 'נרשמת למשחק התמונות!'
   },
   registrationFailed: {
-    en: 'Oops! Registration hiccup',
-    he: 'אופס! בעיה ברישום'
+    en: 'Registration failed',
+    he: 'הרישום נכשל'
   },
   couldNotComplete: {
-    en: 'We hit a small bump. Could you try again?',
-    he: 'נתקלנו במכשול קטן. האם תוכל לנסות שוב?'
+    en: 'Something went wrong. Please try again.',
+    he: 'משהו השתבש. אנא נסה שוב.'
   },
   signOut: {
     en: 'Sign Out',
