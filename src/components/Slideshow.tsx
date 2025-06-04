@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Play, Pause } from "lucide-react";
+import { ArrowLeft, Play, Pause, Maximize, Minimize } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Photo } from "@/types";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +21,7 @@ const Slideshow: React.FC<SlideshowProps> = ({
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -77,6 +78,35 @@ const Slideshow: React.FC<SlideshowProps> = ({
     });
   };
   
+  // Fullscreen functionality
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (error) {
+      toast({
+        title: "Fullscreen Error",
+        description: "Unable to toggle fullscreen mode",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+  
   if (photos.length === 0) {
     return (
       <div className="photo-slideshow-container flex flex-col items-center justify-center p-4 min-h-screen bg-black">
@@ -88,22 +118,33 @@ const Slideshow: React.FC<SlideshowProps> = ({
     );
   }
   
+  const currentPhoto = photos[currentIndex];
+  
   return (
-    <div className="photo-slideshow-container min-h-screen bg-black relative">
-      {photos.map((photo, index) => (
-        <div 
-          key={photo.id}
-          className={`photo-slide absolute inset-0 flex items-center justify-center transition-opacity duration-1000 ${
-            index === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
-          }`}
-        >
-          <img 
-            src={photo.url} 
-            alt={`Slide ${index + 1}`} 
-            className="max-h-screen max-w-full object-contain"
-          />
-        </div>
-      ))}
+    <div className="photo-slideshow-container min-h-screen bg-black relative overflow-hidden">
+      {/* Blurred background image */}
+      <div 
+        className="absolute inset-0 w-full h-full"
+        style={{
+          backgroundImage: `url(${currentPhoto.url})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          filter: 'blur(20px)',
+          transform: 'scale(1.1)', // Slightly zoom to avoid blur edge artifacts
+        }}
+      />
+      
+      {/* Dark overlay to reduce background intensity */}
+      <div className="absolute inset-0 bg-black/40" />
+      
+      {/* Main photo container */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <img 
+          src={currentPhoto.url} 
+          alt={`Slide ${currentIndex + 1}`} 
+          className="max-h-full max-w-full object-contain z-10 relative"
+        />
+      </div>
       
       <div className="absolute top-4 left-4 z-20">
         <Button 
@@ -113,6 +154,21 @@ const Slideshow: React.FC<SlideshowProps> = ({
           onClick={goBack}
         >
           <ArrowLeft className="h-5 w-5" />
+        </Button>
+      </div>
+      
+      <div className="absolute top-4 right-4 z-20">
+        <Button 
+          variant="outline" 
+          size="icon"
+          className="bg-black/50 text-white hover:bg-black/70 border-none"
+          onClick={toggleFullscreen}
+        >
+          {isFullscreen ? (
+            <Minimize className="h-5 w-5" />
+          ) : (
+            <Maximize className="h-5 w-5" />
+          )}
         </Button>
       </div>
       
