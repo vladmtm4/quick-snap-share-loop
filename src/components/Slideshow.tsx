@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Play, Pause, Maximize, Minimize } from "lucide-react";
@@ -126,22 +125,11 @@ const Slideshow: React.FC<SlideshowProps> = ({
             index === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
           }`}
         >
-          {/* Blurred background layer */}
-          <div 
-            className="absolute inset-0 w-full h-full bg-cover bg-center blur-lg scale-110"
-            style={{
-              backgroundImage: `url(${photo.url})`,
-            }}
+          <img 
+            src={photo.url} 
+            alt={`Slide ${index + 1}`} 
+            className="w-full h-full object-cover"
           />
-          
-          {/* Original photo centered */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <img 
-              src={photo.url} 
-              alt={`Slide ${index + 1}`} 
-              className="max-w-full max-h-full object-contain"
-            />
-          </div>
         </div>
       ))}
       
