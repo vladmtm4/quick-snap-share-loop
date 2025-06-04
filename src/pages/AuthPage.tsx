@@ -19,18 +19,14 @@ const AuthPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [redirectionAttempted, setRedirectionAttempted] = useState(false);
 
   // Redirect if user is already authenticated
   useEffect(() => {
-    console.log("AuthPage: User state updated", { user, authLoading, redirectionAttempted });
-    
-    if (!authLoading && user && !redirectionAttempted) {
-      console.log("User is already authenticated, redirecting to:", from);
-      setRedirectionAttempted(true);
+    if (!authLoading && user) {
+      console.log("User is authenticated, redirecting to:", from);
       navigate(from, { replace: true });
     }
-  }, [user, authLoading, navigate, from, redirectionAttempted]);
+  }, [user, authLoading, navigate, from]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,10 +63,8 @@ const AuthPage: React.FC = () => {
     );
   }
 
-  // If the user is authenticated but redirection failed, force it again
-  if (user && !redirectionAttempted) {
-    console.log("User authenticated but redirection not attempted. Redirecting now...");
-    navigate(from, { replace: true });
+  // If user is authenticated, don't render the form
+  if (user) {
     return null;
   }
 

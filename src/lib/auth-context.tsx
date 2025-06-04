@@ -22,7 +22,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [initialCheckDone, setInitialCheckDone] = useState(false);
   const { toast } = useToast();
 
   // Function to fetch admin status
@@ -45,10 +44,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     console.log("AuthProvider: Initializing...");
     
-    // Clear any potentially corrupted session on app start
-    const clearCorruptedSession = async () => {
+    let mounted = true;
+    
+    const initializeAuth = async () => {
       try {
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        
+        if (!mounted) return;
         
         if (error) {
           console.log("Session error detected, clearing...", error);
@@ -56,12 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setSession(null);
           setUser(null);
           setIsAdmin(false);
-          setIsLoading(false);
-          setInitialCheckDone(true);
-          return;
-        }
-
-        if (currentSession) {
+        } else if (currentSession) {
           console.log("Valid session found:", Boolean(currentSession));
           setSession(currentSession);
           setUser(currentSession.user);
@@ -73,26 +70,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsAdmin(false);
         }
       } catch (error) {
-        console.error("Error during session check, clearing session:", error);
-        await supabase.auth.signOut();
-        setSession(null);
-        setUser(null);
-        setIsAdmin(false);
+        console.error("Error during session check:", error);
+        if (mounted) {
+          setSession(null);
+          setUser(null);
+          setIsAdmin(false);
+        }
       } finally {
-        setIsLoading(false);
-        setInitialCheckDone(true);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
 
-    clearCorruptedSession();
+    initializeAuth();
     
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         console.log("Auth state changed:", event, Boolean(currentSession));
         
-        // Only process auth changes after initial check is done
-        if (!initialCheckDone) return;
+        if (!mounted) return;
         
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
@@ -107,9 +105,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
-  }, [initialCheckDone]);
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
