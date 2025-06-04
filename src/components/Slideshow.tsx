@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Play, Pause, Maximize, Minimize } from "lucide-react";
@@ -197,7 +198,7 @@ const Slideshow: React.FC<SlideshowProps> = ({
             }}
           />
         )}
-      }
+      </div>
       
       {/* Preload next few images for smoother transitions */}
       {photos.slice(currentIndex + 1, currentIndex + 4).map((photo, index) => (
