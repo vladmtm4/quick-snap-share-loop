@@ -49,11 +49,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const initialize = async () => {
       try {
-        // Add timeout protection for initialization
+        // Add timeout protection for initialization - reduced timeout
         initializationTimeout = setTimeout(() => {
           console.warn("Auth initialization timeout reached, forcing completion");
           setIsLoading(false);
-        }, 8000); // 8 second timeout
+        }, 5000); // Reduced from 8000 to 5000ms
 
         // First check for existing session
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();

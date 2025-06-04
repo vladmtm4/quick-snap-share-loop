@@ -11,19 +11,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 const HomePage: React.FC = () => {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isLoading: authLoading } = useAuth();
   
   useEffect(() => {
     async function loadAlbums() {
       console.log("HomePage: Loading albums, user:", Boolean(user));
+      
+      if (!user) {
+        console.log("HomePage: No user found, skipping album load");
+        setAlbums([]);
+        setLoading(false);
+        return;
+      }
+      
       setLoading(true);
       try {
-        if (!user) {
-          console.log("HomePage: No user found, skipping album load");
-          setAlbums([]);
-          return;
-        }
-        
         console.log("HomePage: User found, loading albums");
         const allAlbums = await supabaseService.getAllAlbums();
         console.log("HomePage: Albums loaded:", allAlbums.length);
@@ -36,25 +38,21 @@ const HomePage: React.FC = () => {
       }
     }
     
-    // Only load albums if we have a user
-    if (user) {
+    // Wait for auth to complete before loading albums
+    if (!authLoading) {
       loadAlbums();
-    } else {
-      // If no user, just set loading to false
-      setLoading(false);
-      setAlbums([]);
     }
-  }, [user]); // Add user as dependency
+  }, [user, authLoading]); // Add authLoading as dependency
   
-  // Show loading state while albums are being fetched
-  if (loading && user) {
+  // Show loading state while auth is loading OR while albums are being fetched
+  if (authLoading || (loading && user)) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
         <div className="container max-w-3xl py-8 px-4">
           <div className="mb-8 text-center prose prose-lg mx-auto">
             <h1 className="font-bold">QuickSnap</h1>
-            <p>Loading your albums...</p>
+            <p>{authLoading ? "Checking authentication..." : "Loading your albums..."}</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, idx) => (
