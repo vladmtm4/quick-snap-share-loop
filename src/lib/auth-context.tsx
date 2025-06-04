@@ -22,6 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
   const { toast } = useToast();
 
   // Function to fetch admin status
@@ -44,10 +45,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     console.log("AuthProvider: Initializing...");
     
+    // Clear any potentially corrupted session on app start
+    const clearCorruptedSession = async () => {
+      try {
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.log("Session error detected, clearing...", error);
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setIsAdmin(false);
+          setIsLoading(false);
+          setInitialCheckDone(true);
+          return;
+        }
+
+        if (currentSession) {
+          console.log("Valid session found:", Boolean(currentSession));
+          setSession(currentSession);
+          setUser(currentSession.user);
+          await fetchAdminStatus(currentSession.user.id);
+        } else {
+          console.log("No session found");
+          setSession(null);
+          setUser(null);
+          setIsAdmin(false);
+        }
+      } catch (error) {
+        console.error("Error during session check, clearing session:", error);
+        await supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+        setIsAdmin(false);
+      } finally {
+        setIsLoading(false);
+        setInitialCheckDone(true);
+      }
+    };
+
+    clearCorruptedSession();
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         console.log("Auth state changed:", event, Boolean(currentSession));
+        
+        // Only process auth changes after initial check is done
+        if (!initialCheckDone) return;
         
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
@@ -58,23 +103,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           setIsAdmin(false);
         }
-        
-        setIsLoading(false);
       }
     );
-
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      console.log("Initial session check:", Boolean(initialSession));
-      if (!initialSession) {
-        setIsLoading(false);
-      }
-    });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [initialCheckDone]);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -151,6 +186,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setIsLoading(true);
       await supabase.auth.signOut();
+      setSession(null);
+      setUser(null);
+      setIsAdmin(false);
       toast({
         title: "Signed out successfully",
       });

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import AlbumCreationForm from "@/components/AlbumCreationForm";
@@ -10,11 +11,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const HomePage: React.FC = () => {
   const [albums, setAlbums] = useState<Album[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { user, isAdmin } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const { user, isAdmin, isLoading: authLoading } = useAuth();
   
   useEffect(() => {
     async function loadAlbums() {
+      if (!user || authLoading) return;
+      
       setLoading(true);
       try {
         console.log("HomePage: Loading albums");
@@ -28,10 +31,28 @@ const HomePage: React.FC = () => {
       }
     }
     
-    if (user) {
-      loadAlbums();
-    }
-  }, [user]);
+    loadAlbums();
+  }, [user, authLoading]);
+
+  // Show loading while auth is being determined
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="container max-w-3xl py-8 px-4">
+          <div className="mb-8 text-center prose prose-lg mx-auto">
+            <h1 className="font-bold">QuickSnap</h1>
+            <p>Create shared photo albums that everyone can contribute to</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <Skeleton key={idx} className="h-32 rounded-lg" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -96,16 +117,18 @@ const HomePage: React.FC = () => {
               ))}
             </div>
           </div>
-        ) : (
+        ) : user ? (
           <div className="mb-8 text-center">
             <p className="text-gray-500 mb-4">No albums yet. Create your first album below!</p>
           </div>
-        )}
+        ) : null}
         
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h2 className="text-xl font-semibold mb-4">Create a New Album</h2>
-          <AlbumCreationForm />
-        </div>
+        {user && (
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-xl font-semibold mb-4">Create a New Album</h2>
+            <AlbumCreationForm />
+          </div>
+        )}
       </div>
     </div>
   );
