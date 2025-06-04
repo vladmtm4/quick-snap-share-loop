@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Header from "@/components/Header";
 import { Loader2 } from "lucide-react";
@@ -18,56 +18,52 @@ const AuthPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const hasRedirectedRef = useRef(false);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const redirectPending = useRef(false);
+  const maxWaitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Add timeout for auth loading to prevent infinite loading
+  // Set up a maximum wait time for redirecting
   useEffect(() => {
-    if (authLoading) {
-      timeoutRef.current = setTimeout(() => {
-        console.warn("Auth loading timeout reached");
-        if (hasRedirectedRef.current) return;
+    if (authLoading && !maxWaitTimeoutRef.current) {
+      maxWaitTimeoutRef.current = setTimeout(() => {
+        console.log("QuickSnap: Auth wait timeout reached");
         
-        // Force a redirect to prevent infinite loading
-        if (user) {
-          hasRedirectedRef.current = true;
+        if (user && !redirectPending.current) {
+          redirectPending.current = true;
           navigate(from, { replace: true });
         }
-      }, 10000); // 10 second timeout
-    } else {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      }, 3000); // 3 second maximum wait
     }
-
+    
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
+      if (maxWaitTimeoutRef.current) {
+        clearTimeout(maxWaitTimeoutRef.current);
+        maxWaitTimeoutRef.current = null;
       }
     };
   }, [authLoading, user, navigate, from]);
 
-  // Redirect if user is already authenticated - fixed dependency array
+  // Handle redirection when user is authenticated
   useEffect(() => {
-    console.log("AuthPage: User state updated", { user, authLoading, hasRedirected: hasRedirectedRef.current });
-    
-    if (!authLoading && user && !hasRedirectedRef.current) {
-      console.log("User is already authenticated, redirecting to:", from);
-      hasRedirectedRef.current = true;
+    if (!authLoading && user && !redirectPending.current) {
+      console.log("QuickSnap: User authenticated, redirecting");
+      redirectPending.current = true;
       navigate(from, { replace: true });
     }
-  }, [user, authLoading, navigate, from]); // Removed redirectionAttempted from dependencies
+  }, [user, authLoading, navigate, from]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    
     try {
       const { error } = await signIn(email, password);
+      
       if (!error) {
-        console.log("Sign in successful, navigating to:", from);
-        // Small delay to ensure state updates are processed
+        console.log("QuickSnap: Sign in successful");
+        
+        // Small delay to allow auth state to propagate
         setTimeout(() => {
-          hasRedirectedRef.current = true;
+          redirectPending.current = true;
           navigate(from, { replace: true });
         }, 100);
       }
@@ -79,37 +75,37 @@ const AuthPage: React.FC = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    
     try {
-      const { error } = await signUp(email, password);
-      if (!error) {
-        console.log("Sign up successful, navigating to:", from);
-        // Small delay to ensure state updates are processed
-        setTimeout(() => {
-          hasRedirectedRef.current = true;
-          navigate(from, { replace: true });
-        }, 100);
-      }
+      await signUp(email, password);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Show loading indicator while checking session with timeout protection
-  if (authLoading && !hasRedirectedRef.current) {
+  // Show a simple loading state with timeout protection
+  if (authLoading && !redirectPending.current) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="mt-2 text-gray-600">Checking authentication...</p>
-          <p className="mt-1 text-sm text-gray-400">This should only take a moment</p>
+          <p className="mt-2 text-gray-600">Verifying your session...</p>
+          <p className="mt-1 text-sm text-gray-400">This will only take a moment</p>
         </div>
       </div>
     );
   }
 
-  // Don't render the form if we're in the process of redirecting
-  if (user && hasRedirectedRef.current) {
-    return null;
+  // Don't render form during redirect
+  if (redirectPending.current) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="mt-2 text-gray-600">Redirecting you...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
