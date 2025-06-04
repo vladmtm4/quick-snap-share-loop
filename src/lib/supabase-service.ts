@@ -11,60 +11,58 @@ type PhotosRow = Database['public']['Tables']['photos']['Row'];
 export const supabaseService = {
   // Album methods
   async getAllAlbums(): Promise<Album[]> {
-    console.log("Fetching albums for authenticated user");
+    console.log("supabaseService: Fetching albums for authenticated user");
     
     try {
-      // Get the current user
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error("Session error:", sessionError);
-        return [];
-      }
-      
-      const userId = session?.user?.id;
+      // Get the current user (simplified)
+      const { data } = await supabase.auth.getSession();
+      const userId = data?.session?.user?.id;
       
       if (!userId) {
-        console.error("No authenticated user found");
+        console.error("supabaseService: No authenticated user found");
         return [];
       }
       
-      console.log("User ID found:", userId);
+      console.log("supabaseService: Found user ID:", userId);
       
-      // Try to check if the user is an admin, but don't fail if it doesn't work
+      // Try to check if the user is an admin (simplified)
       let isAdmin = false;
       try {
-        const { data: profileData, error: profileError } = await fetchProfile(supabase, userId);
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', userId)
+          .single();
         
-        if (profileError) {
-          console.warn('Warning: Could not fetch profile, assuming non-admin:', profileError.message);
-        } else {
-          isAdmin = profileData?.is_admin || false;
-        }
-      } catch (profileError) {
-        console.warn('Warning: Profile fetch failed, assuming non-admin:', profileError);
+        isAdmin = !!profileData?.is_admin;
+      } catch (error) {
+        console.warn('supabaseService: Could not check admin status, defaulting to false');
       }
       
-      console.log("User is admin:", isAdmin);
+      console.log("supabaseService: User is admin:", isAdmin);
       
-      let query = supabase
-        .from('albums')
-        .select('*');
-        
-      // If not admin, only show albums owned by the current user
+      // Query albums
+      let query = supabase.from('albums').select('*');
+      
+      // Filter by user ID if not admin
       if (!isAdmin) {
         query = query.eq('user_id', userId);
       }
       
-      const { data, error } = await query.order('created_at', { ascending: false });
+      // Execute query
+      const { data: albums, error } = await query.order('created_at', { ascending: false });
       
       if (error) {
-        console.error('Error fetching albums:', error);
+        console.error('supabaseService: Error fetching albums:', error.message);
         return [];
       }
       
-      console.log("Albums fetched successfully:", data?.length || 0, "albums found");
-      return (data || []).map(album => ({
+      // Always return an array even if data is null
+      const albumsList = albums || [];
+      console.log("supabaseService: Successfully fetched", albumsList.length, "albums");
+      
+      // Transform to our Album type
+      return albumsList.map(album => ({
         id: album.id,
         title: album.title,
         description: album.description || undefined,
@@ -75,7 +73,7 @@ export const supabaseService = {
         guest_list: album.guest_list || undefined
       }));
     } catch (error) {
-      console.error('Unexpected error in getAllAlbums:', error);
+      console.error('supabaseService: Unexpected error in getAllAlbums:', error);
       return [];
     }
   },

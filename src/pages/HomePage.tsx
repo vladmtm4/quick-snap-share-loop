@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Header from "@/components/Header";
 import AlbumCreationForm from "@/components/AlbumCreationForm";
 import { Button } from "@/components/ui/button";
@@ -11,59 +11,57 @@ import { Skeleton } from '@/components/ui/skeleton';
 const HomePage: React.FC = () => {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user, isAdmin, isLoading: authLoading } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const fetchAttempted = useRef(false);
   
   useEffect(() => {
     async function loadAlbums() {
-      console.log("HomePage: Loading albums, user:", Boolean(user));
+      // Avoid duplicate fetches
+      if (fetchAttempted.current) return;
+      fetchAttempted.current = true;
       
-      if (!user) {
-        console.log("HomePage: No user found, skipping album load");
-        setAlbums([]);
-        setLoading(false);
-        return;
-      }
-      
+      console.log("HomePage: Starting album load");
       setLoading(true);
+      
       try {
-        console.log("HomePage: User found, loading albums");
+        console.log("HomePage: Fetching albums from service");
         const allAlbums = await supabaseService.getAllAlbums();
-        console.log("HomePage: Albums loaded:", allAlbums.length);
+        console.log("HomePage: Albums loaded successfully:", allAlbums.length);
         setAlbums(allAlbums);
       } catch (error) {
         console.error("HomePage: Error loading albums:", error);
+        // Still set albums to empty array in case of error
         setAlbums([]);
       } finally {
+        // Ensure loading is set to false in all cases
         setLoading(false);
+        console.log("HomePage: Album loading complete, loading set to false");
       }
     }
     
-    // Wait for auth to complete before loading albums
-    if (!authLoading) {
+    // Only load if user is authenticated and we haven't fetched yet
+    if (user && !fetchAttempted.current) {
+      console.log("HomePage: User authenticated, loading albums");
       loadAlbums();
+    } else if (!user) {
+      // Reset fetch attempt if user changes
+      fetchAttempted.current = false;
+      setLoading(false);
     }
-  }, [user, authLoading]); // Add authLoading as dependency
+  }, [user]);
   
-  // Show loading state while auth is loading OR while albums are being fetched
-  if (authLoading || (loading && user)) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="container max-w-3xl py-8 px-4">
-          <div className="mb-8 text-center prose prose-lg mx-auto">
-            <h1 className="font-bold">QuickSnap</h1>
-            <p>{authLoading ? "Checking authentication..." : "Loading your albums..."}</p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, idx) => (
-              <Skeleton key={idx} className="h-32 rounded-lg" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // Force loading to end after 5 seconds as a fallback
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        console.log("HomePage: Force-ending loading state after timeout");
+        setLoading(false);
+      }
+    }, 5000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [loading]);
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
