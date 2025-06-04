@@ -89,18 +89,18 @@ const Slideshow: React.FC<SlideshowProps> = ({
   }
   
   return (
-    <div className="photo-slideshow-container min-h-screen bg-black relative">
+    <div className="photo-slideshow-container h-screen w-screen bg-black relative overflow-hidden">
       {photos.map((photo, index) => (
         <div 
           key={photo.id}
-          className={`photo-slide absolute inset-0 flex items-center justify-center transition-opacity duration-1000 ${
+          className={`photo-slide absolute inset-0 transition-opacity duration-1000 ${
             index === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
           }`}
         >
           <img 
             src={photo.url} 
             alt={`Slide ${index + 1}`} 
-            className="max-h-screen max-w-full object-contain"
+            className="w-full h-full object-cover"
           />
         </div>
       ))}
@@ -109,7 +109,7 @@ const Slideshow: React.FC<SlideshowProps> = ({
         <Button 
           variant="outline" 
           size="icon"
-          className="bg-black/50 text-white hover:bg-black/70 border-none"
+          className="bg-black/50 text-white hover:bg-black/70 border-none backdrop-blur-sm"
           onClick={goBack}
         >
           <ArrowLeft className="h-5 w-5" />
@@ -121,20 +121,20 @@ const Slideshow: React.FC<SlideshowProps> = ({
         <Button 
           variant="outline"
           size="icon"
-          className="bg-black/50 text-white hover:bg-black/70 border-none"
+          className="bg-black/50 text-white hover:bg-black/70 border-none backdrop-blur-sm"
           onClick={() => handleManualNav('prev')}
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         
-        <span className="bg-black/50 text-white px-3 py-1.5 rounded-md text-sm self-center">
+        <span className="bg-black/50 text-white px-3 py-1.5 rounded-md text-sm self-center backdrop-blur-sm">
           {currentIndex + 1} / {photos.length}
         </span>
         
         <Button
           variant="outline"
           size="icon"
-          className="bg-black/50 text-white hover:bg-black/70 border-none"
+          className="bg-black/50 text-white hover:bg-black/70 border-none backdrop-blur-sm"
           onClick={togglePlayPause}
         >
           {isPlaying ? (

@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -85,11 +86,11 @@
   }
   
   .photo-slideshow-container {
-    @apply w-full h-full overflow-x-auto overflow-y-hidden bg-black relative snap-x snap-mandatory;
+    @apply w-screen h-screen overflow-hidden bg-black relative;
   }
   
   .photo-slide {
-    @apply relative flex-shrink-0 w-full h-full opacity-0 transition-opacity duration-1000 ease-in-out snap-center;
+    @apply absolute inset-0 w-full h-full opacity-0 transition-opacity duration-1000 ease-in-out;
   }
   
   .photo-slide.active {
@@ -97,6 +98,6 @@
   }
   
   .photo-slide img {
-    @apply w-full h-full object-contain;
+    @apply w-full h-full object-cover;
   }
 }

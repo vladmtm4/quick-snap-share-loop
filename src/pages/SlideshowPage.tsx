@@ -104,7 +104,7 @@ const SlideshowPage: React.FC = () => {
   
   if (loading && photos.length === 0) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center">
+      <div className="h-screen w-screen bg-black flex flex-col items-center justify-center">
         <div className="text-white mb-4">Loading slideshow...</div>
         <Button variant="outline" onClick={handleGoBack} className="text-white border-white hover:bg-white/10">
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -115,7 +115,7 @@ const SlideshowPage: React.FC = () => {
   }
   
   return (
-    <div className="slideshow-page">
+    <div className="slideshow-page h-screen w-screen overflow-hidden">
       <Slideshow 
         photos={photos} 
         albumId={albumId || ""}
