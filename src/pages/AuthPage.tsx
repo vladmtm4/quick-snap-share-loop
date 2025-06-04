@@ -22,8 +22,6 @@ const AuthPage: React.FC = () => {
 
   // Redirect if user is already authenticated
   useEffect(() => {
-    console.log("AuthPage: Check auth state", { user: !!user, authLoading });
-    
     if (!authLoading && user) {
       console.log("User is authenticated, redirecting to:", from);
       navigate(from, { replace: true });
@@ -34,10 +32,7 @@ const AuthPage: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const { error } = await signIn(email, password);
-      if (!error) {
-        console.log("Sign in successful, navigation will be handled by useEffect");
-      }
+      await signIn(email, password);
     } finally {
       setIsLoading(false);
     }

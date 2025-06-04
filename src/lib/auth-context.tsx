@@ -25,63 +25,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
 
   useEffect(() => {
-    console.log("AuthProvider: Starting initialization");
-    
-    let isMounted = true;
-
-    // Initialize auth state
-    const initAuth = async () => {
+    // Get initial session
+    const getInitialSession = async () => {
       try {
-        // Get current session
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        setSession(initialSession);
+        setUser(initialSession?.user || null);
         
-        if (!isMounted) return;
-
-        if (currentSession?.user) {
-          console.log("Found existing session for user:", currentSession.user.id);
-          setSession(currentSession);
-          setUser(currentSession.user);
-          
+        if (initialSession?.user) {
           // Fetch admin status
           try {
-            const { data } = await fetchProfile(supabase, currentSession.user.id);
-            if (isMounted) {
-              setIsAdmin(data?.is_admin || false);
-            }
+            const { data } = await fetchProfile(supabase, initialSession.user.id);
+            setIsAdmin(data?.is_admin || false);
           } catch (error) {
             console.error("Error fetching admin status:", error);
-            if (isMounted) {
-              setIsAdmin(false);
-            }
+            setIsAdmin(false);
           }
-        } else {
-          console.log("No existing session found");
-          setSession(null);
-          setUser(null);
-          setIsAdmin(false);
         }
       } catch (error) {
-        console.error("Error initializing auth:", error);
-        if (isMounted) {
-          setSession(null);
-          setUser(null);
-          setIsAdmin(false);
-        }
+        console.error("Error getting initial session:", error);
+        setSession(null);
+        setUser(null);
+        setIsAdmin(false);
       } finally {
-        if (isMounted) {
-          console.log("Auth initialization complete");
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       }
     };
 
-    // Set up auth state change listener
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log("Auth state change:", event, newSession ? "session exists" : "no session");
         
-        if (!isMounted) return;
-
         setSession(newSession);
         setUser(newSession?.user || null);
 
@@ -89,28 +64,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Fetch admin status for new session
           try {
             const { data } = await fetchProfile(supabase, newSession.user.id);
-            if (isMounted) {
-              setIsAdmin(data?.is_admin || false);
-            }
+            setIsAdmin(data?.is_admin || false);
           } catch (error) {
             console.error("Error fetching admin status on auth change:", error);
-            if (isMounted) {
-              setIsAdmin(false);
-            }
-          }
-        } else {
-          if (isMounted) {
             setIsAdmin(false);
           }
+        } else {
+          setIsAdmin(false);
         }
+        
+        setIsLoading(false);
       }
     );
 
-    // Initialize
-    initAuth();
+    getInitialSession();
 
     return () => {
-      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);
