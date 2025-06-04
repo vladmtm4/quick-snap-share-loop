@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Play, Pause, Maximize, Minimize } from "lucide-react";
@@ -136,24 +137,17 @@ const Slideshow: React.FC<SlideshowProps> = ({
       {/* Dark overlay to reduce background intensity */}
       <div className="absolute inset-0 bg-black/40" />
       
-      {/* Main photo container with gradient mask for blending */}
+      {/* Main photo container */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div
-          className="relative max-h-full max-w-full"
+        <img 
+          src={currentPhoto.url} 
+          alt={`Slide ${currentIndex + 1}`} 
+          className="max-h-full max-w-full object-contain z-10 relative"
           style={{
-            mask: 'radial-gradient(ellipse 80% 70% at center, black 60%, transparent 100%)',
-            WebkitMask: 'radial-gradient(ellipse 80% 70% at center, black 60%, transparent 100%)',
+            filter: 'drop-shadow(0 20px 40px rgba(0, 0, 0, 0.3))',
+            boxShadow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 60px rgba(0, 0, 0, 0.4)',
           }}
-        >
-          <img 
-            src={currentPhoto.url} 
-            alt={`Slide ${currentIndex + 1}`} 
-            className="max-h-full max-w-full object-contain z-10 relative"
-            style={{
-              filter: 'drop-shadow(0 20px 40px rgba(0, 0, 0, 0.3))',
-            }}
-          />
-        </div>
+        />
       </div>
       
       <div className="absolute top-4 left-4 z-20">
