@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -19,18 +18,45 @@ const AuthPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [redirectionAttempted, setRedirectionAttempted] = useState(false);
+  const hasRedirectedRef = useRef(false);
+  const timeoutRef = useRef<NodeJS.Timeout>();
 
-  // Redirect if user is already authenticated
+  // Add timeout for auth loading to prevent infinite loading
   useEffect(() => {
-    console.log("AuthPage: User state updated", { user, authLoading, redirectionAttempted });
+    if (authLoading) {
+      timeoutRef.current = setTimeout(() => {
+        console.warn("Auth loading timeout reached");
+        if (hasRedirectedRef.current) return;
+        
+        // Force a redirect to prevent infinite loading
+        if (user) {
+          hasRedirectedRef.current = true;
+          navigate(from, { replace: true });
+        }
+      }, 10000); // 10 second timeout
+    } else {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [authLoading, user, navigate, from]);
+
+  // Redirect if user is already authenticated - fixed dependency array
+  useEffect(() => {
+    console.log("AuthPage: User state updated", { user, authLoading, hasRedirected: hasRedirectedRef.current });
     
-    if (!authLoading && user && !redirectionAttempted) {
+    if (!authLoading && user && !hasRedirectedRef.current) {
       console.log("User is already authenticated, redirecting to:", from);
-      setRedirectionAttempted(true);
+      hasRedirectedRef.current = true;
       navigate(from, { replace: true });
     }
-  }, [user, authLoading, navigate, from, redirectionAttempted]);
+  }, [user, authLoading, navigate, from]); // Removed redirectionAttempted from dependencies
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,22 +81,21 @@ const AuthPage: React.FC = () => {
     }
   };
 
-  // Show loading indicator while checking session
-  if (authLoading) {
+  // Show loading indicator while checking session with timeout protection
+  if (authLoading && !hasRedirectedRef.current) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
           <p className="mt-2 text-gray-600">Checking authentication...</p>
+          <p className="mt-1 text-sm text-gray-400">This should only take a moment</p>
         </div>
       </div>
     );
   }
 
-  // If the user is authenticated but redirection failed, force it again
-  if (user && !redirectionAttempted) {
-    console.log("User authenticated but redirection not attempted. Redirecting now...");
-    navigate(from, { replace: true });
+  // Don't render the form if we're in the process of redirecting
+  if (user && hasRedirectedRef.current) {
     return null;
   }
 

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
@@ -46,12 +45,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     let authStateSubscription: { unsubscribe: () => void } | null = null;
+    let initializationTimeout: NodeJS.Timeout;
 
     const initialize = async () => {
       try {
+        // Add timeout protection for initialization
+        initializationTimeout = setTimeout(() => {
+          console.warn("Auth initialization timeout reached, forcing completion");
+          setIsLoading(false);
+        }, 8000); // 8 second timeout
+
         // First check for existing session
-        const { data: sessionData } = await supabase.auth.getSession();
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         console.log("Current session check:", Boolean(sessionData.session));
+        
+        if (sessionError) {
+          console.error("Session check error:", sessionError);
+          setIsLoading(false);
+          return;
+        }
         
         if (sessionData.session) {
           setSession(sessionData.session);
@@ -60,25 +72,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Fetch admin status if user is logged in
           await fetchAdminStatus(sessionData.session.user.id);
         }
+
+        // Clear the timeout since we completed successfully
+        clearTimeout(initializationTimeout);
+        
       } catch (error) {
         console.error("Error checking session:", error);
+        clearTimeout(initializationTimeout);
       } finally {
-        // Now setup auth state listener after initial session check
-        authStateSubscription = supabase.auth.onAuthStateChange(
-          async (event, currentSession) => {
-            console.log("Auth state changed:", event, Boolean(currentSession));
-            
-            setSession(currentSession);
-            setUser(currentSession?.user ?? null);
-            
-            // Fetch admin status if user is logged in
-            if (currentSession?.user) {
-              await fetchAdminStatus(currentSession.user.id);
-            } else {
-              setIsAdmin(false);
+        // Setup auth state listener after initial session check
+        try {
+          authStateSubscription = supabase.auth.onAuthStateChange(
+            async (event, currentSession) => {
+              console.log("Auth state changed:", event, Boolean(currentSession));
+              
+              setSession(currentSession);
+              setUser(currentSession?.user ?? null);
+              
+              // Fetch admin status if user is logged in
+              if (currentSession?.user) {
+                await fetchAdminStatus(currentSession.user.id);
+              } else {
+                setIsAdmin(false);
+              }
             }
-          }
-        ).data.subscription;
+          ).data.subscription;
+        } catch (error) {
+          console.error("Error setting up auth state listener:", error);
+        }
         
         setIsLoading(false);
       }
@@ -89,6 +110,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       if (authStateSubscription) {
         authStateSubscription.unsubscribe();
+      }
+      if (initializationTimeout) {
+        clearTimeout(initializationTimeout);
       }
     };
   }, []);
