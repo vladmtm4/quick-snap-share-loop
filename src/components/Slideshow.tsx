@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Play, Pause, Maximize, Minimize } from "lucide-react";
+import { ArrowLeft, Play, Pause } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Photo } from "@/types";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +21,6 @@ const Slideshow: React.FC<SlideshowProps> = ({
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -30,16 +30,6 @@ const Slideshow: React.FC<SlideshowProps> = ({
       setCurrentIndex(0);
     }
   }, [photos.length, currentIndex]);
-  
-  // Monitor fullscreen changes
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
   
   const goToNextSlide = useCallback(async () => {
     if (photos.length === 0) return;
@@ -65,24 +55,6 @@ const Slideshow: React.FC<SlideshowProps> = ({
   // Toggle play/pause
   const togglePlayPause = () => {
     setIsPlaying(!isPlaying);
-  };
-  
-  // Toggle fullscreen
-  const toggleFullscreen = async () => {
-    try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-      } else {
-        await document.exitFullscreen();
-      }
-    } catch (error) {
-      console.error('Error toggling fullscreen:', error);
-      toast({
-        title: "Fullscreen Error",
-        description: "Unable to toggle fullscreen mode",
-        variant: "destructive",
-      });
-    }
   };
   
   const goBack = () => {
@@ -117,18 +89,18 @@ const Slideshow: React.FC<SlideshowProps> = ({
   }
   
   return (
-    <div className="photo-slideshow-container h-screen w-screen bg-black relative overflow-hidden">
+    <div className="photo-slideshow-container min-h-screen bg-black relative">
       {photos.map((photo, index) => (
         <div 
           key={photo.id}
-          className={`photo-slide absolute inset-0 transition-opacity duration-1000 ${
+          className={`photo-slide absolute inset-0 flex items-center justify-center transition-opacity duration-1000 ${
             index === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
           }`}
         >
           <img 
             src={photo.url} 
             alt={`Slide ${index + 1}`} 
-            className="w-full h-full object-cover"
+            className="max-h-screen max-w-full object-contain"
           />
         </div>
       ))}
@@ -137,25 +109,10 @@ const Slideshow: React.FC<SlideshowProps> = ({
         <Button 
           variant="outline" 
           size="icon"
-          className="bg-black/50 text-white hover:bg-black/70 border-none backdrop-blur-sm"
+          className="bg-black/50 text-white hover:bg-black/70 border-none"
           onClick={goBack}
         >
           <ArrowLeft className="h-5 w-5" />
-        </Button>
-      </div>
-      
-      <div className="absolute top-4 right-4 z-20">
-        <Button 
-          variant="outline" 
-          size="icon"
-          className="bg-black/50 text-white hover:bg-black/70 border-none backdrop-blur-sm"
-          onClick={toggleFullscreen}
-        >
-          {isFullscreen ? (
-            <Minimize className="h-5 w-5" />
-          ) : (
-            <Maximize className="h-5 w-5" />
-          )}
         </Button>
       </div>
       
@@ -164,20 +121,20 @@ const Slideshow: React.FC<SlideshowProps> = ({
         <Button 
           variant="outline"
           size="icon"
-          className="bg-black/50 text-white hover:bg-black/70 border-none backdrop-blur-sm"
+          className="bg-black/50 text-white hover:bg-black/70 border-none"
           onClick={() => handleManualNav('prev')}
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         
-        <span className="bg-black/50 text-white px-3 py-1.5 rounded-md text-sm self-center backdrop-blur-sm">
+        <span className="bg-black/50 text-white px-3 py-1.5 rounded-md text-sm self-center">
           {currentIndex + 1} / {photos.length}
         </span>
         
         <Button
           variant="outline"
           size="icon"
-          className="bg-black/50 text-white hover:bg-black/70 border-none backdrop-blur-sm"
+          className="bg-black/50 text-white hover:bg-black/70 border-none"
           onClick={togglePlayPause}
         >
           {isPlaying ? (
