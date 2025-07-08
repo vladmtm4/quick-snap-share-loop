@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import LanguageSelector from "@/components/LanguageSelector";
 import ThemeToggle from '@/components/ThemeToggle';
 import { useLanguage } from "@/lib/i18n";
-import { ArrowLeft, LogIn, LogOut } from "lucide-react";
+import { ArrowLeft, LogIn, LogOut, User } from "lucide-react";
 
 interface HeaderProps {
   showBackButton?: boolean;
@@ -42,15 +42,26 @@ const Header: React.FC<HeaderProps> = ({ showBackButton = false, hideAuthButtons
           
           {!hideAuthButtons && (
             user ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => signOut()}
-                className="flex items-center gap-1 dark:border-gray-700 dark:text-gray-200"
-              >
-                <LogOut className="h-4 w-4" />
-                <span>{translate("signOut")}</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/profile")}
+                  className="flex items-center gap-1 dark:border-gray-700 dark:text-gray-200"
+                >
+                  <User className="h-4 w-4" />
+                  <span>Profile</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => signOut()}
+                  className="flex items-center gap-1 dark:border-gray-700 dark:text-gray-200"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>{translate("signOut")}</span>
+                </Button>
+              </div>
             ) : (
               <Button
                 variant="outline"

@@ -8,6 +8,7 @@ import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 // Pages
 import HomePage from "@/pages/HomePage";
 import AuthPage from "@/pages/AuthPage";
+import ProfilePage from "@/pages/ProfilePage";
 import AlbumPage from "@/pages/AlbumPage";
 import SlideshowPage from "@/pages/SlideshowPage";
 import NotFound from "@/pages/NotFound";
@@ -39,6 +40,11 @@ function App() {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              } />
               <Route path="/album/:albumId" element={<AlbumPage />} />
               <Route path="/slideshow/:albumId" element={<SlideshowPage />} />
               <Route path="/upload/:albumId" element={<UploadPage />} />
