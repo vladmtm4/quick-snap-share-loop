@@ -441,6 +441,66 @@ export const supabaseService = {
       return false;
     }
   },
+
+  async togglePhotoVisibility(photoId: string): Promise<boolean> {
+    try {
+      // First get the current approval status
+      const { data: photo, error: fetchError } = await supabase
+        .from('photos')
+        .select('approved')
+        .eq('id', photoId)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching photo:', fetchError);
+        return false;
+      }
+
+      // Toggle the approval status
+      const { error: updateError } = await supabase
+        .from('photos')
+        .update({ approved: !photo.approved })
+        .eq('id', photoId);
+
+      if (updateError) {
+        console.error('Error updating photo visibility:', updateError);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in togglePhotoVisibility:', error);
+      return false;
+    }
+  },
+
+  async getAllPhotosByAlbumId(albumId: string): Promise<Photo[]> {
+    try {
+      const { data, error } = await supabase
+        .from('photos')
+        .select('*')
+        .eq('album_id', albumId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching all photos:', error);
+        return [];
+      }
+
+      return (data || []).map(photo => ({
+        id: photo.id,
+        albumId: photo.album_id,
+        url: photo.url,
+        thumbnailUrl: photo.thumbnail_url,
+        createdAt: photo.created_at || '',
+        approved: photo.approved || false,
+        metadata: photo.metadata ? photo.metadata as Photo['metadata'] : null
+      }));
+    } catch (error) {
+      console.error('Error in getAllPhotosByAlbumId:', error);
+      return [];
+    }
+  },
   
   // Storage methods
   async uploadImageToStorage(albumId: string, file: File): Promise<{ url: string, thumbnailUrl: string } | null> {
