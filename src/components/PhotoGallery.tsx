@@ -142,7 +142,8 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ albumId, album }) => {
           title: "Photo deleted",
           description: "The photo has been permanently deleted",
         });
-        // Photo will be automatically removed from UI via realtime subscription
+        // Manually reload photos to ensure UI updates
+        await loadPhotos();
       } else {
         throw new Error("Failed to delete photo");
       }
