@@ -171,7 +171,7 @@ function AlbumPage() {
         </TabsList>
 
         <TabsContent value="all" className="mt-2">
-          <PhotoGallery albumId={albumId || ""} />
+          <PhotoGallery albumId={albumId || ""} album={album} />
         </TabsContent>
 
         {album.moderationEnabled && album.ownerId === user?.id && (

@@ -382,6 +382,65 @@ export const supabaseService = {
       return false;
     }
   },
+
+  async deletePhoto(photoId: string): Promise<boolean> {
+    try {
+      // First get the photo data to get file paths for storage cleanup
+      const { data: photo, error: getError } = await supabase
+        .from('photos')
+        .select('url, thumbnail_url')
+        .eq('id', photoId)
+        .single();
+      
+      if (getError || !photo) {
+        console.error("Error getting photo data:", getError);
+        return false;
+      }
+      
+      // Delete the photo record from database
+      const { error: deleteError } = await supabase
+        .from('photos')
+        .delete()
+        .eq('id', photoId);
+      
+      if (deleteError) {
+        console.error("Error deleting photo from database:", deleteError);
+        return false;
+      }
+      
+      // Extract file paths from URLs for storage cleanup
+      const extractStoragePath = (url: string): string | null => {
+        try {
+          const urlObj = new URL(url);
+          const pathParts = urlObj.pathname.split('/');
+          const storageIndex = pathParts.findIndex(part => part === 'storage');
+          if (storageIndex !== -1 && pathParts[storageIndex + 2] === 'photos') {
+            return pathParts.slice(storageIndex + 3).join('/');
+          }
+        } catch (error) {
+          console.error("Error parsing URL:", error);
+        }
+        return null;
+      };
+      
+      // Clean up storage files
+      const mainFilePath = extractStoragePath(photo.url);
+      const thumbnailFilePath = extractStoragePath(photo.thumbnail_url);
+      
+      if (mainFilePath) {
+        await supabase.storage.from('photos').remove([mainFilePath]);
+      }
+      
+      if (thumbnailFilePath && thumbnailFilePath !== mainFilePath) {
+        await supabase.storage.from('photos').remove([thumbnailFilePath]);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error deleting photo:", error);
+      return false;
+    }
+  },
   
   // Storage methods
   async uploadImageToStorage(albumId: string, file: File): Promise<{ url: string, thumbnailUrl: string } | null> {

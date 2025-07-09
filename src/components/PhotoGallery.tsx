@@ -3,21 +3,25 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabaseService } from "@/lib/supabase-service";
 import { supabase } from "@/integrations/supabase/client";
-import { Photo } from "@/types";
+import { Photo, Album } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye } from "lucide-react";
+import { Eye, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/lib/auth-context";
 
 interface PhotoGalleryProps {
   albumId: string;
+  album?: Album;
 }
 
-const PhotoGallery: React.FC<PhotoGalleryProps> = ({ albumId }) => {
+const PhotoGallery: React.FC<PhotoGalleryProps> = ({ albumId, album }) => {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   const loadPhotos = useCallback(async () => {
     try {
@@ -123,6 +127,34 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ albumId }) => {
   const handleViewSlideshow = () => {
     navigate(`/slideshow/${albumId}`);
   };
+
+  const handleDeletePhoto = async (photoId: string) => {
+    setDeletingPhotoId(photoId);
+    try {
+      const success = await supabaseService.deletePhoto(photoId);
+      if (success) {
+        toast({
+          title: "Photo deleted",
+          description: "The photo has been permanently deleted",
+        });
+        // Photo will be automatically removed from UI via realtime subscription
+      } else {
+        throw new Error("Failed to delete photo");
+      }
+    } catch (error) {
+      console.error("Error deleting photo:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete photo. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingPhotoId(null);
+    }
+  };
+
+  // Check if current user can delete photos (album owner)
+  const canDeletePhotos = album && user && album.ownerId === user.id;
   
   if (loading && photos.length === 0) {
     return (
@@ -152,7 +184,7 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ albumId }) => {
       
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {photos.map((photo) => (
-          <Card key={photo.id} className="overflow-hidden">
+          <Card key={photo.id} className="overflow-hidden relative group">
             <CardContent className="p-0">
               <img
                 src={photo.thumbnailUrl || photo.url}
@@ -160,6 +192,22 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ albumId }) => {
                 className="w-full h-48 object-cover cursor-pointer"
                 onClick={() => navigate(`/slideshow/${albumId}`)}
               />
+              {canDeletePhotos && (
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeletePhoto(photo.id);
+                    }}
+                    disabled={deletingPhotoId === photo.id}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
