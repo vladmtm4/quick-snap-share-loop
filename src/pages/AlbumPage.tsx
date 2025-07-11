@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import ModerationPanel from "@/components/ModerationPanel";
-import { Upload, Camera, PlusCircle, Users, QrCode, Share, UserPlus } from "lucide-react";
+import { Upload, Camera, PlusCircle, Users, QrCode, Share, UserPlus, Download } from "lucide-react";
 import AlbumQRCode from "@/components/AlbumQRCode";
 import AlbumShareLink from "@/components/AlbumShareLink";
 import GuestRegistration from "@/components/GuestRegistration";
@@ -26,6 +26,7 @@ function AlbumPage() {
   const [showQRCode, setShowQRCode] = useState(false);
   const [showModeration, setShowModeration] = useState(false);
   const [showGuestRegistration, setShowGuestRegistration] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     const fetchAlbum = async () => {
@@ -52,6 +53,58 @@ function AlbumPage() {
 
     fetchAlbum();
   }, [albumId]);
+
+  const handleDownloadAll = async () => {
+    if (!albumId) return;
+    
+    setDownloading(true);
+    try {
+      const photos = await supabaseService.getAllPhotosByAlbumId(albumId);
+      
+      if (photos.length === 0) {
+        alert("No photos to download");
+        return;
+      }
+
+      // Download each photo
+      for (let i = 0; i < photos.length; i++) {
+        const photo = photos[i];
+        try {
+          const response = await fetch(photo.url);
+          const blob = await response.blob();
+          
+          // Create download link
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          
+          // Extract file extension from URL or default to jpg
+          const urlParts = photo.url.split('.');
+          const extension = urlParts.length > 1 ? urlParts[urlParts.length - 1].split('?')[0] : 'jpg';
+          
+          link.download = `${album?.title || 'album'}_photo_${i + 1}.${extension}`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+          
+          // Small delay between downloads to avoid overwhelming the browser
+          if (i < photos.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        } catch (error) {
+          console.error(`Error downloading photo ${i + 1}:`, error);
+        }
+      }
+      
+      alert(`Started download of ${photos.length} photos`);
+    } catch (error) {
+      console.error("Error downloading photos:", error);
+      alert("Error downloading photos. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -118,6 +171,16 @@ function AlbumPage() {
           </Button>
           
           <AlbumShareLink albumId={albumId || ''} />
+          
+          <Button
+            variant="outline"
+            onClick={handleDownloadAll}
+            disabled={downloading}
+            className="gap-2"
+          >
+            <Download className="h-4 w-4" />
+            {downloading ? "Downloading..." : "Download All"}
+          </Button>
           
           {album.ownerId === user?.id && (
             <Button
